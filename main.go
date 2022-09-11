@@ -20,12 +20,12 @@ type User struct {
 }
 
 type Transaction struct {
-	ID              string
-	TransactionType string
-	Amount          float32
-	Balance         float32
-	DateTime        string
-	UserID          string
+	ID              string  `json:"-"`
+	TransactionType string  `json:"type"`
+	Amount          float32 `json:"amount"`
+	Balance         float32 `json:"balance"`
+	DateTime        string  `json:"time"`
+	UserID          string  `json:"-"`
 }
 
 type BankService interface {
@@ -191,13 +191,18 @@ func (b bank) GetTransactionDetails(accountId string, startDate, endDate string)
 				return nil, err
 			}
 			fmt.Printf("Transaction time %v, startDate: %v, endDate: %v\n", tDateTimeAsNeeded, startDateTime, endDateTime)
+			fmt.Printf("Is transactiondate same as start date?: %v\nIs transactiondate greater than start date?: %v\nIs transactiondate same as end date?: %v\nIs transactiondate lesser than end date?: %v\n",
+				tDateTimeAsNeeded == startDateTime, tDateTimeAsNeeded.After(startDateTime),
+				tDateTimeAsNeeded == endDateTime, tDateTimeAsNeeded.Before(endDateTime))
 
 			// Transaction time must be greater than or equal to startdate and
 			// less than or equal to end date
-			if (tDateTime == startDateTime || tDateTime.After(startDateTime)) &&
-				(tDateTime == endDateTime || tDateTime.Before(endDateTime)) {
+			if (tDateTimeAsNeeded == startDateTime || tDateTimeAsNeeded.After(startDateTime)) &&
+				(tDateTimeAsNeeded == endDateTime || tDateTimeAsNeeded.Before(endDateTime)) {
 				transactions = append(transactions, t)
+				fmt.Println("Adding transaction:", t)
 			}
+
 		}
 	}
 
