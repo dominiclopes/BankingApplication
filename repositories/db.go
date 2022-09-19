@@ -50,6 +50,7 @@ type User struct {
 	PhoneNumber string  `json:"phone_number" db:"phonenumber"`
 	Password    string  `json:"password" db:"password"`
 	Balance     float32 `json:"balance" db:"balance"`
+	Type        string  `json:"-" db:"type"`
 }
 
 type Transaction struct {
@@ -72,8 +73,8 @@ type BankStorer interface {
 }
 
 const (
-	createAccountQuery = `insert into users(id, email, phonenumber, password, balance) 
-	values($1, $2, $3, $4, $5)`
+	createAccountQuery = `insert into users(id, email, phonenumber, password, balance, type) 
+	values($1, $2, $3, $4, $5, $6)`
 	listAccountsQuery             = `select * from users`
 	getAccountByIDQuery           = `select * from users where id=$1`
 	updateAccountBalanceByIDQuery = `update users set balance=$1 where id=$2`
@@ -92,7 +93,7 @@ func NewBankStore(db *sql.DB) BankStorer {
 }
 
 func (m *bankStore) CreateAccount(u User) (err error) {
-	if _, err = m.db.Exec(createAccountQuery, u.ID, u.Email, u.PhoneNumber, u.Password, u.Balance); err != nil {
+	if _, err = m.db.Exec(createAccountQuery, u.ID, u.Email, u.PhoneNumber, u.Password, u.Balance, u.Type); err != nil {
 		err = fmt.Errorf("error inserting user data, err: %v", err)
 		return
 	}
@@ -110,7 +111,7 @@ func (m *bankStore) GetAccountList() (users []User, err error) {
 	users = make([]User, 0)
 	for rows.Next() {
 		var u User
-		if err = rows.Scan(&u.ID, &u.Email, &u.PhoneNumber, &u.Password, &u.Balance); err != nil {
+		if err = rows.Scan(&u.ID, &u.Email, &u.PhoneNumber, &u.Password, &u.Balance, &u.Type); err != nil {
 			err = fmt.Errorf("error scanning fetched rows: %v", err)
 			return
 		}
@@ -123,7 +124,7 @@ func (m *bankStore) GetAccountDetails(accID string) (u User, err error) {
 
 	row := m.db.QueryRow(getAccountByIDQuery, accID)
 
-	if err = row.Scan(&u.ID, &u.Email, &u.PhoneNumber, &u.Password, &u.Balance); err != nil {
+	if err = row.Scan(&u.ID, &u.Email, &u.PhoneNumber, &u.Password, &u.Balance, &u.Type); err != nil {
 		err = fmt.Errorf("error scanning the fetched row, err: %v", err)
 		return
 	}

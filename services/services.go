@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	uuidgen "github.com/pborman/uuid"
 
 	"example.com/banking/models"
 	"example.com/banking/repositories"
 )
 
+var secretKey = []byte("I'mGoingToBeAGolangDeveloper")
+
 type Service interface {
+	Login(u models.LoginRequest) (auth models.LoginResponse, err error)
 	CreateAccount(u repositories.User) (acc models.CreateAccountResponse, err error)
 	GetAccountList() (accounts []repositories.User, err error)
 	GetAccountDetails(accId string) (acc repositories.User, err error)
@@ -27,6 +31,69 @@ func NewBank(bs repositories.BankStorer) Service {
 	return &bankService{bankStore: bs}
 }
 
+func GenerateJWTToken(acc repositories.User) (tokenString string, err error) {
+	tokenExpirationTime := time.Now().Add(5 * time.Second)
+	claims := &models.Claims{
+		ID:   acc.ID,
+		Role: acc.Type,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: tokenExpirationTime.Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err = token.SignedString(secretKey)
+	if err != nil {
+		err = fmt.Errorf("error generating token, err: %v", err)
+		return
+	}
+	return
+}
+
+func ValidateJWT(tokenString string) (err error) {
+	claims := &models.Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			err = fmt.Errorf("unauthorized, err: %v", err)
+			return
+		}
+		err = fmt.Errorf("bad request, err: %v", err)
+		return
+	}
+
+	if !token.Valid {
+		err = fmt.Errorf("token expired - unauthorized, err: %v", err)
+		return
+	}
+
+	return
+}
+
+func (b *bankService) Login(u models.LoginRequest) (auth models.LoginResponse, err error) {
+	// Verify if user is present
+	acc, err := b.bankStore.GetAccountDetails(u.ID)
+	if err != nil {
+		return
+	}
+
+	if acc.Password != u.Password {
+		err = fmt.Errorf("unauthorized")
+		return
+	}
+
+	// Create the JWT token
+	tokenString, err := GenerateJWTToken(acc)
+	if err != nil {
+		return
+	}
+
+	auth = models.LoginResponse{TokenString: tokenString}
+	return
+}
+
 func (b *bankService) CreateAccount(u repositories.User) (acc models.CreateAccountResponse, err error) {
 	fmt.Printf("Creating an account for user email: %v, phone number: %v\n", u.Email, u.PhoneNumber)
 
@@ -34,6 +101,7 @@ func (b *bankService) CreateAccount(u repositories.User) (acc models.CreateAccou
 	u.ID = uuidgen.New()
 	u.Password = uuidgen.New()
 	u.Balance = 0.0
+	u.Type = "customer"
 
 	// Save the user in the bank
 	err = b.bankStore.CreateAccount(u)

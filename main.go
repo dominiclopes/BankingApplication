@@ -25,6 +25,7 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/ping", services.PingHandler).Methods(http.MethodGet)
+	router.HandleFunc("/login", services.LoginHandler(newBank)).Methods(http.MethodPost)
 	router.HandleFunc("/account", services.CreateAccountHandler(newBank)).Methods(http.MethodPost)
 	router.HandleFunc("/accounts", services.GetAccountsHandler(newBank)).Methods(http.MethodGet)
 	router.HandleFunc("/account/{account_id}", services.GetAccountDetailsHandler(newBank)).Methods(http.MethodGet)

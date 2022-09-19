@@ -1,8 +1,21 @@
 package models
 
 import (
+	"github.com/dgrijalva/jwt-go"
+
 	"example.com/banking/repositories"
 )
+
+type Claims struct {
+	ID   string
+	Role string
+	jwt.StandardClaims
+}
+
+type LoginRequest struct {
+	ID       string `json:"id"`
+	Password string `json:"password"`
+}
 
 type CreateAccountRequest struct {
 	User repositories.User `json:"user"`
@@ -23,6 +36,10 @@ type ErrorResponse struct {
 
 type PingResponse struct {
 	Message string `json:"message"`
+}
+
+type LoginResponse struct {
+	TokenString string `json:"token"`
 }
 
 type CreateAccountResponse struct {

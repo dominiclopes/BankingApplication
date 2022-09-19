@@ -28,6 +28,26 @@ func PingHandler(rw http.ResponseWriter, req *http.Request) {
 	Response(rw, http.StatusOK, models.PingResponse{Message: "pong"})
 }
 
+func LoginHandler(s Service) http.HandlerFunc {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		var uAuth models.LoginRequest
+
+		err := json.NewDecoder(req.Body).Decode(&uAuth)
+		if err != nil {
+			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+
+		auth, err := s.Login(uAuth)
+		if err != nil {
+			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+
+		Response(rw, http.StatusOK, auth)
+	})
+}
+
 func CreateAccountHandler(s Service) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		var u repositories.User
