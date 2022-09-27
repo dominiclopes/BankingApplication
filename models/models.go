@@ -38,10 +38,6 @@ type PingResponse struct {
 	Message string `json:"message"`
 }
 
-type LoginResponse struct {
-	TokenString string `json:"token"`
-}
-
 type CreateAccountResponse struct {
 	ID       string `json:"id"`
 	Password string `json:"password"`
