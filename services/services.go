@@ -21,6 +21,7 @@ type Service interface {
 	DepositAmount(accId string, amount float32) (bal models.DepositWithdrawAmountResponse, err error)
 	WithdrawAmount(accId string, amount float32) (bal models.DepositWithdrawAmountResponse, err error)
 	GetTransactionDetails(accId string, startDate, endDate string) (transactions []repositories.Transaction, err error)
+	DeleteAccount(accID string) (err error)
 }
 
 type bankService struct {
@@ -201,5 +202,11 @@ func (b *bankService) GetTransactionDetails(accId string, startDate, endDate str
 			}
 		}
 	}
+	return
+}
+
+func (b *bankService) DeleteAccount(accID string) (err error) {
+	fmt.Printf("Deleting account: %v\n", accID)
+	err = b.bankStore.DeleteAccount(accID)
 	return
 }

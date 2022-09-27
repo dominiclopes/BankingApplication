@@ -70,6 +70,7 @@ type BankStorer interface {
 	DepositAmount(accID string, amount float32) (balance float32, err error)
 	WithdrawAmount(accID string, amount float32) (balance float32, err error)
 	GetTransactions(accID string) (transactions []Transaction, err error)
+	DeleteAccount(accID string) (err error)
 }
 
 const (
@@ -80,8 +81,9 @@ const (
 	updateAccountBalanceByIDQuery = `update users set balance=$1 where id=$2`
 	createTransactionQuery        = `insert into transactions(id, type, amount, balance, datetime, userid) 
 	values ($1, $2, $3, $4, $5, $6)`
-	transactAmountQuery  = `update users set balance=$1 where id=$2`
-	getTransactionsQuery = `select * from transactions where userid=$1`
+	transactAmountQuery    = `update users set balance=$1 where id=$2`
+	getTransactionsQuery   = `select * from transactions where userid=$1`
+	deleteAccountByIDQuery = `delete from users where id=$1`
 )
 
 type bankStore struct {
@@ -239,5 +241,21 @@ func (m *bankStore) GetTransactions(accID string) (transactions []Transaction, e
 	}
 
 	fmt.Println("Transactions details:", transactions)
+	return
+}
+
+func (m *bankStore) DeleteAccount(accID string) (err error) {
+	_, err = m.GetAccountDetails(accID)
+	if err != nil {
+		err = fmt.Errorf("account %v not present", accID)
+		return
+	}
+
+	if _, err = m.db.Exec(deleteAccountByIDQuery, accID); err != nil {
+		err = fmt.Errorf("error deleting account: %v", accID)
+		return
+	}
+
+	// should delete account delete all its transactions as well ?
 	return
 }

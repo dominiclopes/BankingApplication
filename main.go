@@ -32,6 +32,7 @@ func main() {
 	router.HandleFunc("/account/{account_id}/deposit", services.DepositAmountHandler(newBank)).Methods(http.MethodPost)
 	router.HandleFunc("/account/{account_id}/withdraw", services.WithdrawAmountHandler(newBank)).Methods(http.MethodPost)
 	router.HandleFunc("/account/{account_id}/transactions", services.GetTransactionDetailsHandler(newBank)).Methods(http.MethodPost)
+	router.HandleFunc("/account/{account_id}", services.DeleteAccountHandler(newBank)).Methods(http.MethodDelete)
 
 	http.ListenAndServe("127.0.0.1:8080", router)
 }

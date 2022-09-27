@@ -319,3 +319,37 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		Response(rw, http.StatusOK, transactions)
 	})
 }
+
+func DeleteAccountHandler(b Service) http.HandlerFunc {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		cookie, err := req.Cookie("token")
+		if err != nil {
+			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+
+		tokenString := cookie.Value
+
+		claims, err := ValidateJWT(tokenString)
+		if err != nil {
+			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+
+		if claims.Role != "accountat" {
+			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: "Unauthorized"})
+			return
+		}
+
+		params := mux.Vars(req)
+		accID := params["account_id"]
+
+		if err = b.DeleteAccount(accID); err != nil {
+			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			return
+		}
+
+		rw.Write([]byte("Successfully deleted account"))
+
+	})
+}
