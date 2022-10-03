@@ -1,38 +1,58 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	"os"
 
-	"github.com/gorilla/mux"
+	"github.com/urfave/cli"
 
-	"example.com/banking/repositories"
-	"example.com/banking/services"
+	"example.com/banking/app"
+	"example.com/banking/config"
+	"example.com/banking/db"
+	"example.com/banking/server"
 )
 
 func main() {
-	fmt.Println("Starting with the banking application")
+	config.Load()
+	app.Init()
+	defer app.Close()
 
-	dbConn, err := repositories.CreateDBConnection()
-	if err != nil {
+	cliApp := cli.NewApp()
+	cliApp.Name = "GoLang Banking App"
+	cliApp.Version = "1.0.0"
+	cliApp.Commands = []cli.Command{
+		{
+			Name:  "start",
+			Usage: "start server",
+			Action: func(c *cli.Context) {
+				server.StartApiServer()
+			},
+		},
+		{
+			Name:  "create_migration",
+			Usage: "create migration files",
+			Action: func(c *cli.Context) {
+				db.CreateMigrationFile(c.Args().Get(0))
+			},
+		},
+		{
+			Name:  "migrate",
+			Usage: "run db migrations",
+			Action: func(c *cli.Context) error {
+				err := db.RunMigrations()
+				return err
+			},
+		},
+		{
+			Name:  "rollback",
+			Usage: "rollback db migrations",
+			Action: func(c *cli.Context) error {
+				err := db.RollbackMigration(c.Args().Get(0))
+				return err
+			},
+		},
+	}
+
+	if err := cliApp.Run(os.Args); err != nil {
 		panic(err)
 	}
-	defer repositories.CloseDBConnection(dbConn)
-
-	bankStore := repositories.NewBankStore(dbConn)
-	newBank := services.NewBank(bankStore)
-
-	router := mux.NewRouter()
-
-	router.HandleFunc("/ping", services.PingHandler).Methods(http.MethodGet)
-	router.HandleFunc("/login", services.LoginHandler(newBank)).Methods(http.MethodPost)
-	router.HandleFunc("/account", services.CreateAccountHandler(newBank)).Methods(http.MethodPost)
-	router.HandleFunc("/accounts", services.GetAccountsHandler(newBank)).Methods(http.MethodGet)
-	router.HandleFunc("/account/{account_id}", services.GetAccountDetailsHandler(newBank)).Methods(http.MethodGet)
-	router.HandleFunc("/account/{account_id}/deposit", services.DepositAmountHandler(newBank)).Methods(http.MethodPost)
-	router.HandleFunc("/account/{account_id}/withdraw", services.WithdrawAmountHandler(newBank)).Methods(http.MethodPost)
-	router.HandleFunc("/account/{account_id}/transactions", services.GetTransactionDetailsHandler(newBank)).Methods(http.MethodPost)
-	router.HandleFunc("/account/{account_id}", services.DeleteAccountHandler(newBank)).Methods(http.MethodDelete)
-
-	http.ListenAndServe("127.0.0.1:8080", router)
 }

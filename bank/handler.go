@@ -1,4 +1,4 @@
-package services
+package bank
 
 import (
 	"encoding/json"
@@ -8,39 +8,35 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"example.com/banking/models"
-	"example.com/banking/repositories"
+	"example.com/banking/api"
 )
 
-func Response(rw http.ResponseWriter, status int, response interface{}) {
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte("error encoding response"))
-		return
-	}
-	rw.Header().Add("Content-Type", "application/json")
-	rw.WriteHeader(status)
-	rw.Write(responseBytes)
-}
-
 func PingHandler(rw http.ResponseWriter, req *http.Request) {
-	Response(rw, http.StatusOK, models.PingResponse{Message: "pong"})
+	api.Success(rw, http.StatusOK, api.Response{Message: "pong"})
 }
 
 func LoginHandler(s Service) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		var uAuth models.LoginRequest
+		var uAuth LoginRequest
 
 		err := json.NewDecoder(req.Body).Decode(&uAuth)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
-		tokenString, tokenExpirationTime, err := s.Login(uAuth)
+		if uAuth.Email == "" || uAuth.Password == "" {
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Bad Request"})
+			return
+		}
+
+		tokenString, tokenExpirationTime, err := s.Login(req.Context(), uAuth)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			if err == ErrUnauthorized {
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
+				return
+			}
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
@@ -50,7 +46,7 @@ func LoginHandler(s Service) http.HandlerFunc {
 			Expires: tokenExpirationTime,
 		})
 
-		rw.Write([]byte("Successfully logged in"))
+		api.Success(rw, http.StatusOK, api.Response{Message: "Successfully logged in"})
 	})
 }
 
@@ -59,10 +55,10 @@ func CreateAccountHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -70,36 +66,36 @@ func CreateAccountHandler(s Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		claims, err := ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		if claims.Role != "accountant" {
-			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: "Unauthorized"})
+			api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
 			return
 		}
 
-		var u repositories.User
+		var accReq CreateAccountRequest
 
-		err = json.NewDecoder(req.Body).Decode(&u)
+		err = json.NewDecoder(req.Body).Decode(&accReq)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		// Validate if the user email and phonenumber is correct
-		if u.Email == "" || u.PhoneNumber == "" {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: "BadRequest"})
+		if accReq.Email == "" || accReq.PhoneNumber == "" {
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "BadRequest"})
 			return
 		}
 
-		acc, err := s.CreateAccount(u)
+		accRes, err := s.CreateAccount(req.Context(), accReq)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, acc)
+		api.Success(rw, http.StatusOK, accRes)
 	})
 }
 
@@ -108,10 +104,10 @@ func GetAccountsHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -119,22 +115,22 @@ func GetAccountsHandler(s Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		claims, err := ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		if claims.Role != "accountant" {
-			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: "Unauthorized"})
+			api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
 			return
 		}
 
-		accounts, err := s.GetAccountList()
+		accounts, err := s.GetAccountList(req.Context())
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, accounts)
+		api.Success(rw, http.StatusOK, accounts)
 	})
 }
 
@@ -143,10 +139,10 @@ func GetAccountDetailsHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -154,20 +150,20 @@ func GetAccountDetailsHandler(s Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		_, err = ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		params := mux.Vars(req)
 		accID := params["account_id"]
 
-		acc, err := s.GetAccountDetails(accID)
+		acc, err := s.GetAccountDetails(req.Context(), accID)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, acc)
+		api.Success(rw, http.StatusOK, acc)
 	})
 }
 
@@ -176,10 +172,10 @@ func DepositAmountHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -187,27 +183,27 @@ func DepositAmountHandler(s Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		_, err = ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		params := mux.Vars(req)
 		accId := params["account_id"]
 
-		var depositAmountRequest models.DepositWithdrawAmountRequest
+		var depositAmountRequest DepositWithdrawAmountRequest
 		err = json.NewDecoder(req.Body).Decode(&depositAmountRequest)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
-		bal, err := s.DepositAmount(accId, depositAmountRequest.Amount)
+		err = s.DepositAmount(req.Context(), accId, depositAmountRequest.Amount)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, bal)
+		api.Success(rw, http.StatusOK, api.Response{Message: fmt.Sprintf("Successfully credited account with amount %v", depositAmountRequest.Amount)})
 
 	})
 }
@@ -217,10 +213,10 @@ func WithdrawAmountHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -228,27 +224,27 @@ func WithdrawAmountHandler(s Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		_, err = ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		params := mux.Vars(req)
 		accId := params["account_id"]
 
-		var withdrawAmountRequest models.DepositWithdrawAmountRequest
+		var withdrawAmountRequest DepositWithdrawAmountRequest
 		err = json.NewDecoder(req.Body).Decode(&withdrawAmountRequest)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
-		bal, err := s.WithdrawAmount(accId, withdrawAmountRequest.Amount)
+		err = s.WithdrawAmount(req.Context(), accId, withdrawAmountRequest.Amount)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, bal)
+		api.Success(rw, http.StatusOK, api.Response{Message: fmt.Sprintf("Successfully debited account with amount %v", withdrawAmountRequest.Amount)})
 	})
 }
 
@@ -257,10 +253,10 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 				return
 			}
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		tokenString := cookie.Value
@@ -268,17 +264,17 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		// Authenticate and verify the authorization
 		_, err = ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
 		params := mux.Vars(req)
 		accId := params["account_id"]
 
-		var transactionDetailsRequest models.GetTransactionDetailsRequest
+		var transactionDetailsRequest GetTransactionDetailsRequest
 		err = json.NewDecoder(req.Body).Decode(&transactionDetailsRequest)
 		if err != nil {
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
@@ -286,13 +282,13 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		startDateTime, err := time.Parse("2006-01-02", transactionDetailsRequest.StartDate)
 		if err != nil {
 			err = fmt.Errorf("error parsing startdate: %v", transactionDetailsRequest.StartDate)
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		endDateTime, err := time.Parse("2006-01-02", transactionDetailsRequest.EndDate)
 		if err != nil {
 			err = fmt.Errorf("error parsing enddate %v", transactionDetailsRequest.EndDate)
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
@@ -300,23 +296,23 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		if startDateTime == endDateTime || startDateTime.After(endDateTime) {
 			err = fmt.Errorf("start date: %v must be less than end date: %v",
 				transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 		diffStartAndEndDate := endDateTime.Sub(startDateTime)
 		if diffStartAndEndDate.Hours()/24 > 30 {
 			err = fmt.Errorf("difference between the start date and end date must be less than or equal to 30 days")
-			Response(rw, http.StatusBadRequest, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
 
-		transactions, err := b.GetTransactionDetails(accId, transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
+		transactions, err := b.GetTransactionDetails(req.Context(), accId, transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
 		if err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		Response(rw, http.StatusOK, transactions)
+		api.Success(rw, http.StatusOK, transactions)
 	})
 }
 
@@ -324,7 +320,7 @@ func DeleteAccountHandler(b Service) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		cookie, err := req.Cookie("token")
 		if err != nil {
-			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 			return
 		}
 
@@ -332,24 +328,23 @@ func DeleteAccountHandler(b Service) http.HandlerFunc {
 
 		claims, err := ValidateJWT(tokenString)
 		if err != nil {
-			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: err.Error()})
+			api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
 			return
 		}
 
-		if claims.Role != "accountat" {
-			Response(rw, http.StatusUnauthorized, models.ErrorResponse{Error: "Unauthorized"})
+		if claims.Role != "accountant" {
+			api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
 			return
 		}
 
 		params := mux.Vars(req)
 		accID := params["account_id"]
 
-		if err = b.DeleteAccount(accID); err != nil {
-			Response(rw, http.StatusInternalServerError, models.ErrorResponse{Error: err.Error()})
+		if err = b.DeleteAccount(req.Context(), accID); err != nil {
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
-		rw.Write([]byte("Successfully deleted account"))
-
+		api.Success(rw, http.StatusOK, api.Response{Message: "Successfully deleted account"})
 	})
 }
