@@ -1,11 +1,12 @@
+The Banking Application provided the following features
+- create user account
+- list all user accounts
+- get user account details 
+- credit amount to an account
+- debit amount from an account
+- list transactions for an account
+- delete a user account
 
-Curl Commands: 
+To start the application, execute: go run main.go start
 
-curl localhost:8080/ping
-curl localhost:8080/getCustomerList -v
-curl localhost:8080/createCustomer -X POST -d '{"email":"user_email", "phoneNumber": "user_contact"}' -v
-curl localhost:8080/getAccountDetails -X POST -d '{"id":"user_id", "password": "user_password"}' -v
-curl localhost:8080/depositAccount -X POST -d '{"id":"user_id", "password": "user_password", "amount": "100"}' -v
-curl localhost:8080/withdrawAccount -X POST -d '{"id":"user_id", "password": "user_password", "amount": "50"}' -v
-curl localhost:8080/getTransactions -X POST -d '{"id":"user_id", "password": "user_password", "startDate": "10-09-2022", "endDate": "12-09-2022"}' -v
-                                    
+To run migrations, execute: go run main.go create_migration
