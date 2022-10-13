@@ -98,7 +98,7 @@ func (b *bankService) Login(ctx context.Context, u LoginRequest) (tokenString st
 }
 
 func (b *bankService) CreateAccount(ctx context.Context, accReq CreateAccountRequest) (accRes CreateAccountResponse, err error) {
-	fmt.Printf("Creating an account for user email: %v, phone number: %v\n", accReq.Email, accReq.PhoneNumber)
+	b.logger.Infof("Creating an account for user email: %v, phone number: %v\n", accReq.Email, accReq.PhoneNumber)
 
 	// Create the user ID, password and update the balance
 	u := db.User{
@@ -127,18 +127,18 @@ func (b *bankService) CreateAccount(ctx context.Context, accReq CreateAccountReq
 		AccountID: acc.ID,
 	}
 
-	fmt.Printf("Created account with details: %v. Opening balance: %v\n", accRes, acc.Balance)
+	b.logger.Infof("Created account with details: %v. Opening balance: %v\n", accRes, acc.Balance)
 	return
 }
 
 func (b *bankService) GetAccountList(ctx context.Context) (accounts []db.Account, err error) {
-	fmt.Println("Getting the list of accounts in the bank")
+	b.logger.Info("Getting the list of accounts in the bank")
 	accounts, err = b.store.GetAccountList(ctx)
 	return
 }
 
 func (b *bankService) GetAccountDetails(ctx context.Context, accId string) (acc db.Account, err error) {
-	fmt.Printf("Getting the customer details for account: %v\n", accId)
+	b.logger.Infof("Getting the customer details for account: %v\n", accId)
 	acc, err = b.store.GetAccountDetails(ctx, accId)
 	return
 }

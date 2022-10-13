@@ -33,15 +33,3 @@ func initRouter(dep dependencies) (router *mux.Router) {
 	router.PathPrefix("/docs/").Handler(sh)
 	return
 }
-
-// fmt.Println("Starting with the banking application")
-
-// dbConn, err := repositories.CreateDBConnection()
-// if err != nil {
-// 	panic(err)
-// }
-// defer repositories.CloseDBConnection(dbConn)
-
-// bankStore := repositories.NewBankStore(dbConn)
-// newBank := services.NewBank(bankStore)
-// http.ListenAndServe("127.0.0.1:8080", router)

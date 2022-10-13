@@ -10,3 +10,6 @@ The Banking Application provided the following features
 To start the application, execute: go run main.go start
 
 To run migrations, execute: go run main.go create_migration
+
+For writing unit testcases, used mockery
+docker pull vektra/mockery
