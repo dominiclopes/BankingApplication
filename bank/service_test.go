@@ -1,4 +1,4 @@
-package bank
+bank/mocks/ package bank
 
 import (
 	"context"
