@@ -1,19 +1,48 @@
-bank/mocks/ package bank
+package bank
 
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 
-	"example.com/banking/db"
-	"example.com/banking/db/mocks"
 	uuidgen "github.com/pborman/uuid"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
+
+	"example.com/banking/app"
+	"example.com/banking/db"
+	"example.com/banking/db/mocks"
 )
 
-func Test_bankService_CreateAccount(t *testing.T) {
+func init() {
+	app.InitLogger()
+}
+
+type BankServiceTestSuite struct {
+	suite.Suite
+	logger      *zap.SugaredLogger
+	storer      *mocks.Storer
+	bankService Service
+}
+
+func (bsts *BankServiceTestSuite) SetupSuite() {
+	bsts.T().Logf("SetupSuite - Creating the logger instance")
+	bsts.logger = app.GetLogger()
+}
+
+func (bsts *BankServiceTestSuite) SetupTest() {
+	bsts.T().Logf("SetupTest - Creating the mock db instance and the bank service")
+
+	bsts.storer = mocks.NewStorer(bsts.T())
+	bsts.bankService = NewBankService(bsts.storer, bsts.logger)
+}
+
+func TestBankServiceTestSuite(t *testing.T) {
+	suite.Run(t, &BankServiceTestSuite{})
+}
+
+func (bsts *BankServiceTestSuite) Test_bankService_CreateAccount() {
 	type args struct {
 		ctx    context.Context
 		accReq CreateAccountRequest
@@ -26,17 +55,29 @@ func Test_bankService_CreateAccount(t *testing.T) {
 	}{
 		// positive test
 		{
-			name:    "positiveTest",
-			args:    args{ctx: context.TODO(), accReq: CreateAccountRequest{Email: "abc@gmail.com", PhoneNumber: "1234567899"}},
+			name: "positiveTest",
+			args: args{
+				ctx: context.TODO(),
+				accReq: CreateAccountRequest{
+					Email:       "abc@gmail.com",
+					PhoneNumber: "1234567899",
+				},
+			},
 			wantErr: false,
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("CreateAccount", context.TODO(), mock.AnythingOfType("db.User"), mock.AnythingOfType("db.Account")).Return(nil)
+				s.On("CreateAccount", context.TODO(), mock.AnythingOfType("db.User"), mock.AnythingOfType("db.Account")).Return(nil).Once()
 			},
 		},
 		// negative test
 		{
-			name:    "negativeTest",
-			args:    args{ctx: context.TODO(), accReq: CreateAccountRequest{Email: "abc@gmail.com", PhoneNumber: "1234567899"}},
+			name: "negativeTest",
+			args: args{
+				ctx: context.TODO(),
+				accReq: CreateAccountRequest{
+					Email:       "abc@gmail.com",
+					PhoneNumber: "1234567899",
+				},
+			},
 			wantErr: true,
 			prepare: func(a args, s *mocks.Storer) {
 				s.On("CreateAccount", context.TODO(), mock.AnythingOfType("db.User"), mock.AnythingOfType("db.Account")).Return(errors.New("mocked error"))
@@ -44,33 +85,25 @@ func Test_bankService_CreateAccount(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			zapLogger, err := zap.NewProduction()
-			if err != nil {
-				panic(err)
-			}
-			logger := zapLogger.Sugar()
+		bsts.T().Run(tt.name, func(t *testing.T) {
 
-			s := mocks.NewStorer(t)
+			tt.prepare(tt.args, bsts.storer)
 
-			b := NewBankService(s, logger)
-			tt.prepare(tt.args, s)
+			gotAccRes, err := bsts.bankService.CreateAccount(tt.args.ctx, tt.args.accReq)
 
-			gotAccRes, err := b.CreateAccount(tt.args.ctx, tt.args.accReq)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("bankService.CreateAccount() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				// bsts.
+				bsts.ErrorContains(err, "mocked error")
+			} else {
+				bsts.ErrorIs(err, nil)
 			}
 
-			if reflect.TypeOf(gotAccRes) != reflect.TypeOf(CreateAccountResponse{}) {
-				t.Errorf("Incorrect response type")
-				return
-			}
+			bsts.IsType(CreateAccountResponse{}, gotAccRes)
 		})
 	}
 }
 
-func Test_bankService_GetAccountList(t *testing.T) {
+func (bsts *BankServiceTestSuite) Test_bankService_GetAccountList() {
 	type args struct {
 		ctx context.Context
 	}
@@ -84,55 +117,49 @@ func Test_bankService_GetAccountList(t *testing.T) {
 	}{
 		//positive test
 		{
-			name:         "positiveTest",
-			args:         args{ctx: context.TODO()},
+			name: "positiveTest",
+			args: args{
+				ctx: context.TODO(),
+			},
 			wantErr:      false,
 			wantAccounts: []db.Account{},
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountList", context.TODO()).Return([]db.Account{}, nil)
+				s.On("GetAccountList", context.TODO()).Return([]db.Account{}, nil).Once()
 			},
 		},
 		//negative test
 		{
-			name:         "negativeTest",
-			args:         args{ctx: context.TODO()},
+			name: "negativeTest",
+			args: args{
+				ctx: context.TODO(),
+			},
 			wantErr:      true,
 			wantAccounts: nil,
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountList", context.TODO()).Return(nil, errors.New("My error"))
+				s.On("GetAccountList", context.TODO()).Return(nil, errors.New("mocked error"))
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			zapLogger, err := zap.NewProduction()
-			if err != nil {
-				panic(err)
-			}
-			logger := zapLogger.Sugar()
+		bsts.T().Run(tt.name, func(t *testing.T) {
+			tt.prepare(tt.args, bsts.storer)
 
-			s := mocks.NewStorer(t)
+			accounts, err := bsts.bankService.GetAccountList(tt.args.ctx)
 
-			b := NewBankService(s, logger)
-			tt.prepare(tt.args, s)
-
-			accounts, err := b.GetAccountList(tt.args.ctx)
-
-			if (err != nil) != tt.wantErr {
-				t.Errorf("bankService.GetAccountList() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !reflect.DeepEqual(accounts, tt.wantAccounts) {
-				t.Errorf("Incorrect response type")
-				return
+			if tt.wantErr {
+				// bsts.
+				bsts.ErrorContains(err, "mocked error")
+				bsts.Nil(accounts)
+			} else {
+				bsts.ErrorIs(err, nil)
+				bsts.Equal(tt.wantAccounts, accounts)
 			}
 		})
 	}
 }
 
-func Test_bankService_GetAccountDetails(t *testing.T) {
+func (bsts *BankServiceTestSuite) Test_bankService_GetAccountDetails() {
 	type args struct {
 		ctx   context.Context
 		accId string
@@ -161,32 +188,23 @@ func Test_bankService_GetAccountDetails(t *testing.T) {
 			wantAcc: db.Account{},
 			wantErr: true,
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountDetails", a.ctx, a.accId).Return(db.Account{}, errors.New("my error"))
+				s.On("GetAccountDetails", a.ctx, a.accId).Return(db.Account{}, errors.New("mocked error"))
 			},
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		bsts.T().Run(tt.name, func(t *testing.T) {
+			tt.prepare(tt.args, bsts.storer)
 
-			zapLogger, err := zap.NewProduction()
-			if err != nil {
-				panic(err)
+			gotAcc, err := bsts.bankService.GetAccountDetails(tt.args.ctx, tt.args.accId)
+
+			if tt.wantErr {
+				// bsts.
+				bsts.ErrorContains(err, "mocked error")
+			} else {
+				bsts.ErrorIs(err, nil)
 			}
-			logger := zapLogger.Sugar()
-
-			s := mocks.NewStorer(t)
-
-			b := NewBankService(s, logger)
-			tt.prepare(tt.args, s)
-
-			gotAcc, err := b.GetAccountDetails(tt.args.ctx, tt.args.accId)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("bankService.GetAccountDetails() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotAcc, tt.wantAcc) {
-				t.Errorf("bankService.GetAccountDetails() = %v, want %v", gotAcc, tt.wantAcc)
-			}
+			bsts.Equal(tt.wantAcc, gotAcc)
 		})
 	}
 }
