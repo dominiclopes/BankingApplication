@@ -216,9 +216,9 @@ func (s *store) WithdrawAmount(ctx context.Context, accID, userID string, amount
 
 		// verify if amount can be debited
 		if acc.Balance < amount {
-			err = fmt.Errorf("amount %v cannot be debited from account %v. insufficient funds: %v",
+			fmt.Printf("amount %v cannot be debited from account %v. insufficient funds: %v",
 				amount, accID, acc.Balance)
-			return err
+			return ErrInsufficientFunds
 		}
 
 		// update the user balance

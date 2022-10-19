@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"example.com/banking/api"
+	"example.com/banking/db"
 )
 
 func PingHandler(rw http.ResponseWriter, req *http.Request) {
@@ -177,6 +178,11 @@ func GetAccountDetailsHandler(s Service) http.HandlerFunc {
 
 		acc, err := s.GetAccountDetails(req.Context(), accID, claims.UserID)
 		if err != nil {
+			if err == db.ErrAccountNotExist {
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
+				return
+			}
+
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
@@ -217,6 +223,11 @@ func DepositAmountHandler(s Service) http.HandlerFunc {
 
 		err = s.DepositAmount(req.Context(), accId, claims.UserID, depositAmountRequest.Amount)
 		if err != nil {
+			if err == db.ErrAccountNotExist {
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
+				return
+			}
+
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
@@ -258,6 +269,16 @@ func WithdrawAmountHandler(s Service) http.HandlerFunc {
 
 		err = s.WithdrawAmount(req.Context(), accId, claims.UserID, withdrawAmountRequest.Amount)
 		if err != nil {
+			if err == db.ErrInsufficientFunds {
+				api.Error(rw, http.StatusOK, api.Response{Message: err.Error()})
+				return
+			}
+
+			if err == db.ErrAccountNotExist {
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
+				return
+			}
+
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
@@ -326,6 +347,11 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 
 		transactions, err := b.GetTransactionDetails(req.Context(), accId, claims.UserID, transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
 		if err != nil {
+			if err == db.ErrAccountNotExist {
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
+				return
+			}
+
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
