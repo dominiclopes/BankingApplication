@@ -100,51 +100,13 @@ func (_c *Storer_CreateAccount_Call) Return(err error) *Storer_CreateAccount_Cal
 	return _c
 }
 
-// DeleteAccount provides a mock function with given fields: ctx, accID
-func (_m *Storer) DeleteAccount(ctx context.Context, accID string) error {
-	ret := _m.Called(ctx, accID)
+// DepositAmount provides a mock function with given fields: ctx, accID, userID, amount
+func (_m *Storer) DepositAmount(ctx context.Context, accID string, userID string, amount float32) error {
+	ret := _m.Called(ctx, accID, userID, amount)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, accID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// Storer_DeleteAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteAccount'
-type Storer_DeleteAccount_Call struct {
-	*mock.Call
-}
-
-// DeleteAccount is a helper method to define mock.On call
-//  - ctx context.Context
-//  - accID string
-func (_e *Storer_Expecter) DeleteAccount(ctx interface{}, accID interface{}) *Storer_DeleteAccount_Call {
-	return &Storer_DeleteAccount_Call{Call: _e.mock.On("DeleteAccount", ctx, accID)}
-}
-
-func (_c *Storer_DeleteAccount_Call) Run(run func(ctx context.Context, accID string)) *Storer_DeleteAccount_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Storer_DeleteAccount_Call) Return(err error) *Storer_DeleteAccount_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-// DepositAmount provides a mock function with given fields: ctx, accID, amount
-func (_m *Storer) DepositAmount(ctx context.Context, accID string, amount float32) error {
-	ret := _m.Called(ctx, accID, amount)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float32) error); ok {
-		r0 = rf(ctx, accID, amount)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float32) error); ok {
+		r0 = rf(ctx, accID, userID, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -160,14 +122,15 @@ type Storer_DepositAmount_Call struct {
 // DepositAmount is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accID string
+//  - userID string
 //  - amount float32
-func (_e *Storer_Expecter) DepositAmount(ctx interface{}, accID interface{}, amount interface{}) *Storer_DepositAmount_Call {
-	return &Storer_DepositAmount_Call{Call: _e.mock.On("DepositAmount", ctx, accID, amount)}
+func (_e *Storer_Expecter) DepositAmount(ctx interface{}, accID interface{}, userID interface{}, amount interface{}) *Storer_DepositAmount_Call {
+	return &Storer_DepositAmount_Call{Call: _e.mock.On("DepositAmount", ctx, accID, userID, amount)}
 }
 
-func (_c *Storer_DepositAmount_Call) Run(run func(ctx context.Context, accID string, amount float32)) *Storer_DepositAmount_Call {
+func (_c *Storer_DepositAmount_Call) Run(run func(ctx context.Context, accID string, userID string, amount float32)) *Storer_DepositAmount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float32))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(float32))
 	})
 	return _c
 }
@@ -177,20 +140,20 @@ func (_c *Storer_DepositAmount_Call) Return(err error) *Storer_DepositAmount_Cal
 	return _c
 }
 
-// GetAccountDetails provides a mock function with given fields: ctx, accID
-func (_m *Storer) GetAccountDetails(ctx context.Context, accID string) (db.Account, error) {
-	ret := _m.Called(ctx, accID)
+// GetAccountDetails provides a mock function with given fields: ctx, accID, userID
+func (_m *Storer) GetAccountDetails(ctx context.Context, accID string, userID string) (db.UserAccountDetails, error) {
+	ret := _m.Called(ctx, accID, userID)
 
-	var r0 db.Account
-	if rf, ok := ret.Get(0).(func(context.Context, string) db.Account); ok {
-		r0 = rf(ctx, accID)
+	var r0 db.UserAccountDetails
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) db.UserAccountDetails); ok {
+		r0 = rf(ctx, accID, userID)
 	} else {
-		r0 = ret.Get(0).(db.Account)
+		r0 = ret.Get(0).(db.UserAccountDetails)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, accID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, accID, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -206,32 +169,33 @@ type Storer_GetAccountDetails_Call struct {
 // GetAccountDetails is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accID string
-func (_e *Storer_Expecter) GetAccountDetails(ctx interface{}, accID interface{}) *Storer_GetAccountDetails_Call {
-	return &Storer_GetAccountDetails_Call{Call: _e.mock.On("GetAccountDetails", ctx, accID)}
+//  - userID string
+func (_e *Storer_Expecter) GetAccountDetails(ctx interface{}, accID interface{}, userID interface{}) *Storer_GetAccountDetails_Call {
+	return &Storer_GetAccountDetails_Call{Call: _e.mock.On("GetAccountDetails", ctx, accID, userID)}
 }
 
-func (_c *Storer_GetAccountDetails_Call) Run(run func(ctx context.Context, accID string)) *Storer_GetAccountDetails_Call {
+func (_c *Storer_GetAccountDetails_Call) Run(run func(ctx context.Context, accID string, userID string)) *Storer_GetAccountDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *Storer_GetAccountDetails_Call) Return(acc db.Account, err error) *Storer_GetAccountDetails_Call {
+func (_c *Storer_GetAccountDetails_Call) Return(acc db.UserAccountDetails, err error) *Storer_GetAccountDetails_Call {
 	_c.Call.Return(acc, err)
 	return _c
 }
 
 // GetAccountList provides a mock function with given fields: ctx
-func (_m *Storer) GetAccountList(ctx context.Context) ([]db.Account, error) {
+func (_m *Storer) GetAccountList(ctx context.Context) ([]db.UserAccountDetails, error) {
 	ret := _m.Called(ctx)
 
-	var r0 []db.Account
-	if rf, ok := ret.Get(0).(func(context.Context) []db.Account); ok {
+	var r0 []db.UserAccountDetails
+	if rf, ok := ret.Get(0).(func(context.Context) []db.UserAccountDetails); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]db.Account)
+			r0 = ret.Get(0).([]db.UserAccountDetails)
 		}
 	}
 
@@ -263,18 +227,18 @@ func (_c *Storer_GetAccountList_Call) Run(run func(ctx context.Context)) *Storer
 	return _c
 }
 
-func (_c *Storer_GetAccountList_Call) Return(accounts []db.Account, err error) *Storer_GetAccountList_Call {
+func (_c *Storer_GetAccountList_Call) Return(accounts []db.UserAccountDetails, err error) *Storer_GetAccountList_Call {
 	_c.Call.Return(accounts, err)
 	return _c
 }
 
-// GetTransactions provides a mock function with given fields: ctx, accID
-func (_m *Storer) GetTransactions(ctx context.Context, accID string) ([]db.Transaction, error) {
-	ret := _m.Called(ctx, accID)
+// GetTransactions provides a mock function with given fields: ctx, accID, userID
+func (_m *Storer) GetTransactions(ctx context.Context, accID string, userID string) ([]db.Transaction, error) {
+	ret := _m.Called(ctx, accID, userID)
 
 	var r0 []db.Transaction
-	if rf, ok := ret.Get(0).(func(context.Context, string) []db.Transaction); ok {
-		r0 = rf(ctx, accID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []db.Transaction); ok {
+		r0 = rf(ctx, accID, userID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]db.Transaction)
@@ -282,8 +246,8 @@ func (_m *Storer) GetTransactions(ctx context.Context, accID string) ([]db.Trans
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, accID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, accID, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -299,13 +263,14 @@ type Storer_GetTransactions_Call struct {
 // GetTransactions is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accID string
-func (_e *Storer_Expecter) GetTransactions(ctx interface{}, accID interface{}) *Storer_GetTransactions_Call {
-	return &Storer_GetTransactions_Call{Call: _e.mock.On("GetTransactions", ctx, accID)}
+//  - userID string
+func (_e *Storer_Expecter) GetTransactions(ctx interface{}, accID interface{}, userID interface{}) *Storer_GetTransactions_Call {
+	return &Storer_GetTransactions_Call{Call: _e.mock.On("GetTransactions", ctx, accID, userID)}
 }
 
-func (_c *Storer_GetTransactions_Call) Run(run func(ctx context.Context, accID string)) *Storer_GetTransactions_Call {
+func (_c *Storer_GetTransactions_Call) Run(run func(ctx context.Context, accID string, userID string)) *Storer_GetTransactions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -361,13 +326,13 @@ func (_c *Storer_GetUserByEmailAndPassword_Call) Return(u db.User, err error) *S
 	return _c
 }
 
-// WithdrawAmount provides a mock function with given fields: ctx, accID, amount
-func (_m *Storer) WithdrawAmount(ctx context.Context, accID string, amount float32) error {
-	ret := _m.Called(ctx, accID, amount)
+// WithdrawAmount provides a mock function with given fields: ctx, accID, userID, amount
+func (_m *Storer) WithdrawAmount(ctx context.Context, accID string, userID string, amount float32) error {
+	ret := _m.Called(ctx, accID, userID, amount)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float32) error); ok {
-		r0 = rf(ctx, accID, amount)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float32) error); ok {
+		r0 = rf(ctx, accID, userID, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -383,14 +348,15 @@ type Storer_WithdrawAmount_Call struct {
 // WithdrawAmount is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accID string
+//  - userID string
 //  - amount float32
-func (_e *Storer_Expecter) WithdrawAmount(ctx interface{}, accID interface{}, amount interface{}) *Storer_WithdrawAmount_Call {
-	return &Storer_WithdrawAmount_Call{Call: _e.mock.On("WithdrawAmount", ctx, accID, amount)}
+func (_e *Storer_Expecter) WithdrawAmount(ctx interface{}, accID interface{}, userID interface{}, amount interface{}) *Storer_WithdrawAmount_Call {
+	return &Storer_WithdrawAmount_Call{Call: _e.mock.On("WithdrawAmount", ctx, accID, userID, amount)}
 }
 
-func (_c *Storer_WithdrawAmount_Call) Run(run func(ctx context.Context, accID string, amount float32)) *Storer_WithdrawAmount_Call {
+func (_c *Storer_WithdrawAmount_Call) Run(run func(ctx context.Context, accID string, userID string, amount float32)) *Storer_WithdrawAmount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float32))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(float32))
 	})
 	return _c
 }

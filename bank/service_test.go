@@ -112,7 +112,7 @@ func (bsts *BankServiceTestSuite) Test_bankService_GetAccountList() {
 		name         string
 		args         args
 		wantErr      bool
-		wantAccounts []db.Account
+		wantAccounts []db.UserAccountDetails
 		prepare      func(args, *mocks.Storer)
 	}{
 		//positive test
@@ -122,9 +122,9 @@ func (bsts *BankServiceTestSuite) Test_bankService_GetAccountList() {
 				ctx: context.TODO(),
 			},
 			wantErr:      false,
-			wantAccounts: []db.Account{},
+			wantAccounts: []db.UserAccountDetails{},
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountList", context.TODO()).Return([]db.Account{}, nil).Once()
+				s.On("GetAccountList", context.TODO()).Return([]db.UserAccountDetails{}, nil).Once()
 			},
 		},
 		//negative test
@@ -161,34 +161,35 @@ func (bsts *BankServiceTestSuite) Test_bankService_GetAccountList() {
 
 func (bsts *BankServiceTestSuite) Test_bankService_GetAccountDetails() {
 	type args struct {
-		ctx   context.Context
-		accId string
+		ctx    context.Context
+		accId  string
+		userID string
 	}
 	tests := []struct {
 		name    string
 		args    args
-		wantAcc db.Account
+		wantAcc db.UserAccountDetails
 		wantErr bool
 		prepare func(args, *mocks.Storer)
 	}{
 		// positive test
 		{
 			name:    "positiveTest",
-			args:    args{context.TODO(), uuidgen.New()},
-			wantAcc: db.Account{},
+			args:    args{context.TODO(), uuidgen.New(), "1"},
+			wantAcc: db.UserAccountDetails{},
 			wantErr: false,
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountDetails", a.ctx, a.accId).Return(db.Account{}, nil)
+				s.On("GetAccountDetails", a.ctx, a.accId, a.userID).Return(db.UserAccountDetails{}, nil)
 			},
 		},
 		// negatice test
 		{
 			name:    "negativeTest",
-			args:    args{context.TODO(), uuidgen.New()},
-			wantAcc: db.Account{},
+			args:    args{context.TODO(), uuidgen.New(), "2"},
+			wantAcc: db.UserAccountDetails{},
 			wantErr: true,
 			prepare: func(a args, s *mocks.Storer) {
-				s.On("GetAccountDetails", a.ctx, a.accId).Return(db.Account{}, errors.New("mocked error"))
+				s.On("GetAccountDetails", a.ctx, a.accId, a.userID).Return(db.UserAccountDetails{}, errors.New("mocked error"))
 			},
 		},
 	}
@@ -196,7 +197,7 @@ func (bsts *BankServiceTestSuite) Test_bankService_GetAccountDetails() {
 		bsts.T().Run(tt.name, func(t *testing.T) {
 			tt.prepare(tt.args, bsts.storer)
 
-			gotAcc, err := bsts.bankService.GetAccountDetails(tt.args.ctx, tt.args.accId)
+			gotAcc, err := bsts.bankService.GetAccountDetails(tt.args.ctx, tt.args.accId, tt.args.userID)
 
 			if tt.wantErr {
 				// bsts.

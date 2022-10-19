@@ -72,51 +72,13 @@ func (_c *Service_CreateAccount_Call) Return(accRes bank.CreateAccountResponse, 
 	return _c
 }
 
-// DeleteAccount provides a mock function with given fields: ctx, accID
-func (_m *Service) DeleteAccount(ctx context.Context, accID string) error {
-	ret := _m.Called(ctx, accID)
+// DepositAmount provides a mock function with given fields: ctx, accId, userID, amount
+func (_m *Service) DepositAmount(ctx context.Context, accId string, userID string, amount float32) error {
+	ret := _m.Called(ctx, accId, userID, amount)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, accID)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// Service_DeleteAccount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteAccount'
-type Service_DeleteAccount_Call struct {
-	*mock.Call
-}
-
-// DeleteAccount is a helper method to define mock.On call
-//  - ctx context.Context
-//  - accID string
-func (_e *Service_Expecter) DeleteAccount(ctx interface{}, accID interface{}) *Service_DeleteAccount_Call {
-	return &Service_DeleteAccount_Call{Call: _e.mock.On("DeleteAccount", ctx, accID)}
-}
-
-func (_c *Service_DeleteAccount_Call) Run(run func(ctx context.Context, accID string)) *Service_DeleteAccount_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *Service_DeleteAccount_Call) Return(err error) *Service_DeleteAccount_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-// DepositAmount provides a mock function with given fields: ctx, accId, amount
-func (_m *Service) DepositAmount(ctx context.Context, accId string, amount float32) error {
-	ret := _m.Called(ctx, accId, amount)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float32) error); ok {
-		r0 = rf(ctx, accId, amount)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float32) error); ok {
+		r0 = rf(ctx, accId, userID, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -132,14 +94,15 @@ type Service_DepositAmount_Call struct {
 // DepositAmount is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accId string
+//  - userID string
 //  - amount float32
-func (_e *Service_Expecter) DepositAmount(ctx interface{}, accId interface{}, amount interface{}) *Service_DepositAmount_Call {
-	return &Service_DepositAmount_Call{Call: _e.mock.On("DepositAmount", ctx, accId, amount)}
+func (_e *Service_Expecter) DepositAmount(ctx interface{}, accId interface{}, userID interface{}, amount interface{}) *Service_DepositAmount_Call {
+	return &Service_DepositAmount_Call{Call: _e.mock.On("DepositAmount", ctx, accId, userID, amount)}
 }
 
-func (_c *Service_DepositAmount_Call) Run(run func(ctx context.Context, accId string, amount float32)) *Service_DepositAmount_Call {
+func (_c *Service_DepositAmount_Call) Run(run func(ctx context.Context, accId string, userID string, amount float32)) *Service_DepositAmount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float32))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(float32))
 	})
 	return _c
 }
@@ -149,20 +112,20 @@ func (_c *Service_DepositAmount_Call) Return(err error) *Service_DepositAmount_C
 	return _c
 }
 
-// GetAccountDetails provides a mock function with given fields: ctx, accId
-func (_m *Service) GetAccountDetails(ctx context.Context, accId string) (db.Account, error) {
-	ret := _m.Called(ctx, accId)
+// GetAccountDetails provides a mock function with given fields: ctx, accId, userID
+func (_m *Service) GetAccountDetails(ctx context.Context, accId string, userID string) (db.UserAccountDetails, error) {
+	ret := _m.Called(ctx, accId, userID)
 
-	var r0 db.Account
-	if rf, ok := ret.Get(0).(func(context.Context, string) db.Account); ok {
-		r0 = rf(ctx, accId)
+	var r0 db.UserAccountDetails
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) db.UserAccountDetails); ok {
+		r0 = rf(ctx, accId, userID)
 	} else {
-		r0 = ret.Get(0).(db.Account)
+		r0 = ret.Get(0).(db.UserAccountDetails)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, accId)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, accId, userID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -178,32 +141,33 @@ type Service_GetAccountDetails_Call struct {
 // GetAccountDetails is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accId string
-func (_e *Service_Expecter) GetAccountDetails(ctx interface{}, accId interface{}) *Service_GetAccountDetails_Call {
-	return &Service_GetAccountDetails_Call{Call: _e.mock.On("GetAccountDetails", ctx, accId)}
+//  - userID string
+func (_e *Service_Expecter) GetAccountDetails(ctx interface{}, accId interface{}, userID interface{}) *Service_GetAccountDetails_Call {
+	return &Service_GetAccountDetails_Call{Call: _e.mock.On("GetAccountDetails", ctx, accId, userID)}
 }
 
-func (_c *Service_GetAccountDetails_Call) Run(run func(ctx context.Context, accId string)) *Service_GetAccountDetails_Call {
+func (_c *Service_GetAccountDetails_Call) Run(run func(ctx context.Context, accId string, userID string)) *Service_GetAccountDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *Service_GetAccountDetails_Call) Return(acc db.Account, err error) *Service_GetAccountDetails_Call {
+func (_c *Service_GetAccountDetails_Call) Return(acc db.UserAccountDetails, err error) *Service_GetAccountDetails_Call {
 	_c.Call.Return(acc, err)
 	return _c
 }
 
 // GetAccountList provides a mock function with given fields: ctx
-func (_m *Service) GetAccountList(ctx context.Context) ([]db.Account, error) {
+func (_m *Service) GetAccountList(ctx context.Context) ([]db.UserAccountDetails, error) {
 	ret := _m.Called(ctx)
 
-	var r0 []db.Account
-	if rf, ok := ret.Get(0).(func(context.Context) []db.Account); ok {
+	var r0 []db.UserAccountDetails
+	if rf, ok := ret.Get(0).(func(context.Context) []db.UserAccountDetails); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]db.Account)
+			r0 = ret.Get(0).([]db.UserAccountDetails)
 		}
 	}
 
@@ -235,18 +199,18 @@ func (_c *Service_GetAccountList_Call) Run(run func(ctx context.Context)) *Servi
 	return _c
 }
 
-func (_c *Service_GetAccountList_Call) Return(accounts []db.Account, err error) *Service_GetAccountList_Call {
+func (_c *Service_GetAccountList_Call) Return(accounts []db.UserAccountDetails, err error) *Service_GetAccountList_Call {
 	_c.Call.Return(accounts, err)
 	return _c
 }
 
-// GetTransactionDetails provides a mock function with given fields: ctx, accId, startDate, endDate
-func (_m *Service) GetTransactionDetails(ctx context.Context, accId string, startDate string, endDate string) ([]db.Transaction, error) {
-	ret := _m.Called(ctx, accId, startDate, endDate)
+// GetTransactionDetails provides a mock function with given fields: ctx, accId, userID, startDate, endDate
+func (_m *Service) GetTransactionDetails(ctx context.Context, accId string, userID string, startDate string, endDate string) ([]db.Transaction, error) {
+	ret := _m.Called(ctx, accId, userID, startDate, endDate)
 
 	var r0 []db.Transaction
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) []db.Transaction); ok {
-		r0 = rf(ctx, accId, startDate, endDate)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) []db.Transaction); ok {
+		r0 = rf(ctx, accId, userID, startDate, endDate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]db.Transaction)
@@ -254,8 +218,8 @@ func (_m *Service) GetTransactionDetails(ctx context.Context, accId string, star
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, accId, startDate, endDate)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
+		r1 = rf(ctx, accId, userID, startDate, endDate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -271,15 +235,16 @@ type Service_GetTransactionDetails_Call struct {
 // GetTransactionDetails is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accId string
+//  - userID string
 //  - startDate string
 //  - endDate string
-func (_e *Service_Expecter) GetTransactionDetails(ctx interface{}, accId interface{}, startDate interface{}, endDate interface{}) *Service_GetTransactionDetails_Call {
-	return &Service_GetTransactionDetails_Call{Call: _e.mock.On("GetTransactionDetails", ctx, accId, startDate, endDate)}
+func (_e *Service_Expecter) GetTransactionDetails(ctx interface{}, accId interface{}, userID interface{}, startDate interface{}, endDate interface{}) *Service_GetTransactionDetails_Call {
+	return &Service_GetTransactionDetails_Call{Call: _e.mock.On("GetTransactionDetails", ctx, accId, userID, startDate, endDate)}
 }
 
-func (_c *Service_GetTransactionDetails_Call) Run(run func(ctx context.Context, accId string, startDate string, endDate string)) *Service_GetTransactionDetails_Call {
+func (_c *Service_GetTransactionDetails_Call) Run(run func(ctx context.Context, accId string, userID string, startDate string, endDate string)) *Service_GetTransactionDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }
@@ -341,13 +306,13 @@ func (_c *Service_Login_Call) Return(tokenString string, tokenExpirationTime tim
 	return _c
 }
 
-// WithdrawAmount provides a mock function with given fields: ctx, accId, amount
-func (_m *Service) WithdrawAmount(ctx context.Context, accId string, amount float32) error {
-	ret := _m.Called(ctx, accId, amount)
+// WithdrawAmount provides a mock function with given fields: ctx, accId, userID, amount
+func (_m *Service) WithdrawAmount(ctx context.Context, accId string, userID string, amount float32) error {
+	ret := _m.Called(ctx, accId, userID, amount)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, float32) error); ok {
-		r0 = rf(ctx, accId, amount)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, float32) error); ok {
+		r0 = rf(ctx, accId, userID, amount)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -363,14 +328,15 @@ type Service_WithdrawAmount_Call struct {
 // WithdrawAmount is a helper method to define mock.On call
 //  - ctx context.Context
 //  - accId string
+//  - userID string
 //  - amount float32
-func (_e *Service_Expecter) WithdrawAmount(ctx interface{}, accId interface{}, amount interface{}) *Service_WithdrawAmount_Call {
-	return &Service_WithdrawAmount_Call{Call: _e.mock.On("WithdrawAmount", ctx, accId, amount)}
+func (_e *Service_Expecter) WithdrawAmount(ctx interface{}, accId interface{}, userID interface{}, amount interface{}) *Service_WithdrawAmount_Call {
+	return &Service_WithdrawAmount_Call{Call: _e.mock.On("WithdrawAmount", ctx, accId, userID, amount)}
 }
 
-func (_c *Service_WithdrawAmount_Call) Run(run func(ctx context.Context, accId string, amount float32)) *Service_WithdrawAmount_Call {
+func (_c *Service_WithdrawAmount_Call) Run(run func(ctx context.Context, accId string, userID string, amount float32)) *Service_WithdrawAmount_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(float32))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(float32))
 	})
 	return _c
 }
