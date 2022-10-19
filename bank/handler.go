@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/mail"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -24,19 +27,24 @@ func LoginHandler(s Service) http.HandlerFunc {
 			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
 		}
-
+		// Validate if the user email and phonenumber is correct
 		if uAuth.Email == "" || uAuth.Password == "" {
-			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Bad Request"})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Email address and password must be provided"})
 			return
 		}
+		if _, err := mail.ParseAddress(uAuth.Email); err != nil {
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Invalid email address"})
+			return
+		}
+		uAuth.Email = strings.Trim(uAuth.Email, " ")
 
 		tokenString, tokenExpirationTime, err := s.Login(req.Context(), uAuth)
 		if err != nil {
 			if err == ErrUnauthorized {
-				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
 				return
 			}
-			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: "Err - Internal Server Error"})
 			return
 		}
 
@@ -55,22 +63,18 @@ func CreateAccountHandler(s Service) http.HandlerFunc {
 		cookie, err := req.Cookie("token")
 		if err != nil {
 			if err == http.ErrNoCookie {
-				api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
+				api.Error(rw, http.StatusUnauthorized, api.Response{Message: "JWT token not present in the cookie"})
 				return
 			}
-			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
+			api.Error(rw, http.StatusInternalServerError,
+				api.Response{Message: fmt.Sprintf("Internal Server Error: %v", err.Error())})
 			return
 		}
 		tokenString := cookie.Value
 
 		// Authenticate and verify the authorization
 		claims, err := ValidateJWT(tokenString)
-		if err != nil {
-			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
-			return
-		}
-
-		if claims.Role != "accountant" {
+		if err != nil || claims.Role != "accountant" {
 			api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
 			return
 		}
@@ -79,19 +83,33 @@ func CreateAccountHandler(s Service) http.HandlerFunc {
 
 		err = json.NewDecoder(req.Body).Decode(&accReq)
 		if err != nil {
-			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: "Internal Server Error"})
 			return
 		}
 
 		// Validate if the user email and phonenumber is correct
 		if accReq.Email == "" || accReq.PhoneNumber == "" {
-			api.Error(rw, http.StatusBadRequest, api.Response{Message: "BadRequest"})
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Email address and phone number must be provided"})
+			return
+		}
+		if _, err := mail.ParseAddress(accReq.Email); err != nil {
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Invalid email address"})
+			return
+		}
+		accReq.Email = strings.Trim(accReq.Email, " ")
+		re := regexp.MustCompile(`^\d{10}$`)
+		if !re.MatchString(accReq.PhoneNumber) {
+			api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Phone number must contain 10 digits"})
 			return
 		}
 
 		accRes, err := s.CreateAccount(req.Context(), accReq)
 		if err != nil {
-			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
+			if err.Error() == "account exists for the given email" {
+				api.Error(rw, http.StatusBadRequest, api.Response{Message: "Err - Account exists for the given email"})
+				return
+			}
+			api.Error(rw, http.StatusInternalServerError, api.Response{Message: "Err - Internal Server Error - Failure creating user account"})
 			return
 		}
 
@@ -148,7 +166,7 @@ func GetAccountDetailsHandler(s Service) http.HandlerFunc {
 		tokenString := cookie.Value
 
 		// Authenticate and verify the authorization
-		_, err = ValidateJWT(tokenString)
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
 			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
@@ -157,7 +175,7 @@ func GetAccountDetailsHandler(s Service) http.HandlerFunc {
 		params := mux.Vars(req)
 		accID := params["account_id"]
 
-		acc, err := s.GetAccountDetails(req.Context(), accID)
+		acc, err := s.GetAccountDetails(req.Context(), accID, claims.UserID)
 		if err != nil {
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
@@ -181,7 +199,7 @@ func DepositAmountHandler(s Service) http.HandlerFunc {
 		tokenString := cookie.Value
 
 		// Authenticate and verify the authorization
-		_, err = ValidateJWT(tokenString)
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
 			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
@@ -197,7 +215,7 @@ func DepositAmountHandler(s Service) http.HandlerFunc {
 			return
 		}
 
-		err = s.DepositAmount(req.Context(), accId, depositAmountRequest.Amount)
+		err = s.DepositAmount(req.Context(), accId, claims.UserID, depositAmountRequest.Amount)
 		if err != nil {
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
@@ -222,7 +240,7 @@ func WithdrawAmountHandler(s Service) http.HandlerFunc {
 		tokenString := cookie.Value
 
 		// Authenticate and verify the authorization
-		_, err = ValidateJWT(tokenString)
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
 			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
@@ -238,7 +256,7 @@ func WithdrawAmountHandler(s Service) http.HandlerFunc {
 			return
 		}
 
-		err = s.WithdrawAmount(req.Context(), accId, withdrawAmountRequest.Amount)
+		err = s.WithdrawAmount(req.Context(), accId, claims.UserID, withdrawAmountRequest.Amount)
 		if err != nil {
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
@@ -262,7 +280,7 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 		tokenString := cookie.Value
 
 		// Authenticate and verify the authorization
-		_, err = ValidateJWT(tokenString)
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
 			api.Error(rw, http.StatusBadRequest, api.Response{Message: err.Error()})
 			return
@@ -306,45 +324,12 @@ func GetTransactionDetailsHandler(b Service) http.HandlerFunc {
 			return
 		}
 
-		transactions, err := b.GetTransactionDetails(req.Context(), accId, transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
+		transactions, err := b.GetTransactionDetails(req.Context(), accId, claims.UserID, transactionDetailsRequest.StartDate, transactionDetailsRequest.EndDate)
 		if err != nil {
 			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
 			return
 		}
 
 		api.Success(rw, http.StatusOK, transactions)
-	})
-}
-
-func DeleteAccountHandler(b Service) http.HandlerFunc {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		cookie, err := req.Cookie("token")
-		if err != nil {
-			api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
-			return
-		}
-
-		tokenString := cookie.Value
-
-		claims, err := ValidateJWT(tokenString)
-		if err != nil {
-			api.Error(rw, http.StatusUnauthorized, api.Response{Message: err.Error()})
-			return
-		}
-
-		if claims.Role != "accountant" {
-			api.Error(rw, http.StatusUnauthorized, api.Response{Message: "Unauthorized"})
-			return
-		}
-
-		params := mux.Vars(req)
-		accID := params["account_id"]
-
-		if err = b.DeleteAccount(req.Context(), accID); err != nil {
-			api.Error(rw, http.StatusInternalServerError, api.Response{Message: err.Error()})
-			return
-		}
-
-		api.Success(rw, http.StatusOK, api.Response{Message: "Successfully deleted account"})
 	})
 }

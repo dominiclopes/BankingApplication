@@ -16,14 +16,13 @@ const (
 	deleteUserByIDQuery            = `DELETE FROM users WHERE id=$1`
 
 	createAccountQuery               = `INSERT INTO accounts(id, balance, user_id) VALUES ($1, $2, $3)`
-	listAccountsQuery                = `SELECT * from accounts`
-	getAccountByAccIDQuery           = `SELECT * from accounts WHERE id=$1`
+	listAccountsQuery                = `SELECT accounts.id, accounts.balance, users.email, users.phone_number from accounts inner join users on accounts.user_id=users.id`
+	getAccountByAccIDQuery           = `SELECT accounts.id, accounts.balance, users.email, users.phone_number from accounts inner join users on accounts.user_id=users.id where accounts.id=$1 and accounts.user_id=$2`
 	updateAccountBalanceByAccIDQuery = `UPDATE accounts SET balance=$1 WHERE id=$2`
 	deleteAccountByIDQuery           = `DELETE FROM accounts WHERE id=$1`
 
-	createTransactionQuery         = `INSERT INTO transactions(id, type, amount, balance, created_at, account_id) VALUES ($1, $2, $3, $4, $5, $6)`
-	getTransactionsByAccIDQuery    = `SELECT * FROM transactions WHERE account_id=$1`
-	deleteTransactionsByAccIDQuery = `DELETE FROM transactions WHERE account_id=$1`
+	createTransactionQuery      = `INSERT INTO transactions(id, type, amount, balance, created_at, account_id) VALUES ($1, $2, $3, $4, $5, $6)`
+	getTransactionsByAccIDQuery = `SELECT * FROM transactions WHERE account_id=$1`
 )
 
 type User struct {
@@ -38,6 +37,12 @@ type Account struct {
 	ID      string  `json:"account_id" db:"id"`
 	Balance float32 `json:"balance" db:"balance"`
 	UserID  string  `json:"-" db:"user_id"`
+}
+
+type UserAccountDetails struct {
+	Account
+	Email       string `json:"email" db:"email"`
+	PhoneNumber string `json:"phone_number" db:"phone_number"`
 }
 
 type Transaction struct {
@@ -97,7 +102,7 @@ func (s *store) CreateAccount(ctx context.Context, u User, acc Account) (err err
 	return
 }
 
-func (s *store) GetAccountList(ctx context.Context) (accounts []Account, err error) {
+func (s *store) GetAccountList(ctx context.Context) (accounts []UserAccountDetails, err error) {
 
 	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
 		return s.db.SelectContext(ctx, &accounts, listAccountsQuery)
@@ -110,9 +115,10 @@ func (s *store) GetAccountList(ctx context.Context) (accounts []Account, err err
 	return
 }
 
-func (s *store) GetAccountDetails(ctx context.Context, accID string) (acc Account, err error) {
+func (s *store) GetAccountDetails(ctx context.Context, accID, userID string) (acc UserAccountDetails, err error) {
+	fmt.Println("accID:", accID, "userID:", userID)
 	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
-		return s.db.GetContext(ctx, &acc, getAccountByAccIDQuery, accID)
+		return s.db.GetContext(ctx, &acc, getAccountByAccIDQuery, accID, userID)
 	})
 
 	if err == sql.ErrNoRows {
@@ -131,7 +137,7 @@ func (s *store) AddTransaction(ctx context.Context, t Transaction) (err error) {
 	return
 }
 
-func (s *store) DepositAmount(ctx context.Context, accID string, amount float32) (err error) {
+func (s *store) DepositAmount(ctx context.Context, accID, userID string, amount float32) (err error) {
 	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return
@@ -151,7 +157,7 @@ func (s *store) DepositAmount(ctx context.Context, accID string, amount float32)
 	ctxWithTx := newContext(ctx, tx)
 	err = WithDefaultTimeout(ctxWithTx, func(ctx context.Context) error {
 		// get the account details
-		acc, err := s.GetAccountDetails(ctx, accID)
+		acc, err := s.GetAccountDetails(ctx, accID, userID)
 		if err != nil {
 			return err
 		}
@@ -183,7 +189,7 @@ func (s *store) DepositAmount(ctx context.Context, accID string, amount float32)
 	return
 }
 
-func (s *store) WithdrawAmount(ctx context.Context, accID string, amount float32) (err error) {
+func (s *store) WithdrawAmount(ctx context.Context, accID, userID string, amount float32) (err error) {
 	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return
@@ -203,7 +209,7 @@ func (s *store) WithdrawAmount(ctx context.Context, accID string, amount float32
 
 	ctxWithTx := newContext(ctx, tx)
 	err = WithDefaultTimeout(ctxWithTx, func(ctx context.Context) error {
-		acc, err := s.GetAccountDetails(ctx, accID)
+		acc, err := s.GetAccountDetails(ctx, accID, userID)
 		if err != nil {
 			return err
 		}
@@ -242,9 +248,9 @@ func (s *store) WithdrawAmount(ctx context.Context, accID string, amount float32
 	return
 }
 
-func (s *store) GetTransactions(ctx context.Context, accID string) (transactions []Transaction, err error) {
+func (s *store) GetTransactions(ctx context.Context, accID, userID string) (transactions []Transaction, err error) {
 
-	if _, err = s.GetAccountDetails(ctx, accID); err != nil {
+	if _, err = s.GetAccountDetails(ctx, accID, userID); err != nil {
 		return
 	}
 
@@ -257,32 +263,5 @@ func (s *store) GetTransactions(ctx context.Context, accID string) (transactions
 	}
 
 	fmt.Println("Transactions details:", transactions)
-	return
-}
-
-func (s *store) DeleteAccount(ctx context.Context, accID string) (err error) {
-	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
-		// Get the user account details
-		acc, err := s.GetAccountDetails(ctx, accID)
-		if err != nil {
-			return err
-		}
-
-		// Delete all account transactions
-		if _, err = s.db.Exec(deleteTransactionsByAccIDQuery, accID); err != nil {
-			return err
-		}
-
-		// Delete the user account
-		if _, err = s.db.Exec(deleteAccountByIDQuery, accID); err != nil {
-			return err
-		}
-
-		// Delete the user
-		if _, err = s.db.Exec(deleteUserByIDQuery, acc.UserID); err != nil {
-			err = fmt.Errorf("error deleting account: %v", accID)
-		}
-		return err
-	})
 	return
 }

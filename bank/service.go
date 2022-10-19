@@ -2,6 +2,7 @@ package bank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,12 +18,11 @@ var secretKey = []byte("I'mGoingToBeAGolangDeveloper")
 type Service interface {
 	Login(ctx context.Context, lReq LoginRequest) (tokenString string, tokenExpirationTime time.Time, err error)
 	CreateAccount(ctx context.Context, accReq CreateAccountRequest) (accRes CreateAccountResponse, err error)
-	GetAccountList(ctx context.Context) (accounts []db.Account, err error)
-	GetAccountDetails(ctx context.Context, accId string) (acc db.Account, err error)
-	DepositAmount(ctx context.Context, accId string, amount float32) (err error)
-	WithdrawAmount(ctx context.Context, accId string, amount float32) (err error)
-	GetTransactionDetails(ctx context.Context, accId string, startDate, endDate string) (transactions []db.Transaction, err error)
-	DeleteAccount(ctx context.Context, accID string) (err error)
+	GetAccountList(ctx context.Context) (accounts []db.UserAccountDetails, err error)
+	GetAccountDetails(ctx context.Context, accId, userID string) (acc db.UserAccountDetails, err error)
+	DepositAmount(ctx context.Context, accId, userID string, amount float32) (err error)
+	WithdrawAmount(ctx context.Context, accId, userID string, amount float32) (err error)
+	GetTransactionDetails(ctx context.Context, accId, userID string, startDate, endDate string) (transactions []db.Transaction, err error)
 }
 
 type bankService struct {
@@ -37,11 +37,11 @@ func NewBankService(s db.Storer, l *zap.SugaredLogger) Service {
 	}
 }
 
-func generateJWT(email string, role string) (tokenString string, tokenExpirationTime time.Time, err error) {
+func generateJWT(userID string, role string) (tokenString string, tokenExpirationTime time.Time, err error) {
 	tokenExpirationTime = time.Now().Add(5 * time.Minute)
 	claims := &Claims{
-		Email: email,
-		Role:  role,
+		UserID: userID,
+		Role:   role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: tokenExpirationTime.Unix(),
 		},
@@ -58,23 +58,13 @@ func generateJWT(email string, role string) (tokenString string, tokenExpiration
 func ValidateJWT(tokenString string) (claims *Claims, err error) {
 	claims = &Claims{}
 
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	_, err = jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			err = fmt.Errorf("unauthorized, err: %v", err)
-			return
-		}
-		err = fmt.Errorf("bad request, err: %v", err)
+		err = fmt.Errorf("unauthorized, err: %v", err)
 		return
 	}
-
-	if !token.Valid {
-		err = fmt.Errorf("token expired - unauthorized, err: %v", err)
-		return
-	}
-
 	return
 }
 
@@ -90,7 +80,7 @@ func (b *bankService) Login(ctx context.Context, u LoginRequest) (tokenString st
 	}
 
 	// Create the JWT token
-	tokenString, tokenExpirationTime, err = generateJWT(user.Email, user.Type)
+	tokenString, tokenExpirationTime, err = generateJWT(user.ID, user.Type)
 	if err != nil {
 		return
 	}
@@ -117,6 +107,11 @@ func (b *bankService) CreateAccount(ctx context.Context, accReq CreateAccountReq
 	// Save the user in the bank
 	err = b.store.CreateAccount(ctx, u, acc)
 	if err != nil {
+		b.logger.Errorf("Err creating user account: %v", err.Error())
+		if err.Error() == "pq: duplicate key value violates unique constraint \"users_email_key\"" {
+			err = errors.New("account exists for the given email")
+			return
+		}
 		return
 	}
 
@@ -131,22 +126,22 @@ func (b *bankService) CreateAccount(ctx context.Context, accReq CreateAccountReq
 	return
 }
 
-func (b *bankService) GetAccountList(ctx context.Context) (accounts []db.Account, err error) {
+func (b *bankService) GetAccountList(ctx context.Context) (accounts []db.UserAccountDetails, err error) {
 	b.logger.Info("Getting the list of accounts in the bank")
 	accounts, err = b.store.GetAccountList(ctx)
 	return
 }
 
-func (b *bankService) GetAccountDetails(ctx context.Context, accId string) (acc db.Account, err error) {
+func (b *bankService) GetAccountDetails(ctx context.Context, accId, userID string) (acc db.UserAccountDetails, err error) {
 	b.logger.Infof("Getting the customer details for account: %v\n", accId)
-	acc, err = b.store.GetAccountDetails(ctx, accId)
+	acc, err = b.store.GetAccountDetails(ctx, accId, userID)
 	return
 }
 
-func (b *bankService) DepositAmount(ctx context.Context, accId string, amount float32) (err error) {
+func (b *bankService) DepositAmount(ctx context.Context, accId, userID string, amount float32) (err error) {
 	fmt.Printf("Depositing amount: %v in account: %v\n", amount, accId)
 
-	err = b.store.DepositAmount(ctx, accId, amount)
+	err = b.store.DepositAmount(ctx, accId, userID, amount)
 	if err != nil {
 		return
 	}
@@ -154,19 +149,19 @@ func (b *bankService) DepositAmount(ctx context.Context, accId string, amount fl
 	return
 }
 
-func (b *bankService) WithdrawAmount(ctx context.Context, accId string, amount float32) (err error) {
+func (b *bankService) WithdrawAmount(ctx context.Context, accId, userID string, amount float32) (err error) {
 	fmt.Printf("Withdrawing amount: %v from account: %v\n", amount, accId)
 
-	err = b.store.WithdrawAmount(ctx, accId, amount)
+	err = b.store.WithdrawAmount(ctx, accId, userID, amount)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (b *bankService) GetTransactionDetails(ctx context.Context, accId, startDate, endDate string) (transactions []db.Transaction, err error) {
+func (b *bankService) GetTransactionDetails(ctx context.Context, accId, userID, startDate, endDate string) (transactions []db.Transaction, err error) {
 	fmt.Printf("Getting transactions details for account: %v, from %v to %v\n", accId, startDate, endDate)
-	allTransactions, err := b.store.GetTransactions(ctx, accId)
+	allTransactions, err := b.store.GetTransactions(ctx, accId, userID)
 	if err != nil {
 		return
 	}
@@ -183,11 +178,21 @@ func (b *bankService) GetTransactionDetails(ctx context.Context, accId, startDat
 	}
 
 	transactions = make([]db.Transaction, 0)
+	var tDateTimeAsNeeded time.Time
+	var errFormat1, errFormat2, errFormat3 error
 	for _, t := range allTransactions {
-		tDateTimeAsNeeded, err := time.Parse("2006-01-02T15:04:05.000Z", t.CreatedAt)
-		if err != nil {
-			err = fmt.Errorf("error parsing transaction date: %v", t.CreatedAt)
-			return nil, err
+		tDateTimeAsNeeded, errFormat1 = time.Parse("2006-01-02T15:04:05.000Z", t.CreatedAt)
+		if errFormat1 != nil {
+			tDateTimeAsNeeded, errFormat2 = time.Parse("2006-01-02T15:04:05.00Z", t.CreatedAt)
+
+			if errFormat2 != nil {
+				tDateTimeAsNeeded, errFormat3 = time.Parse("2006-01-02T15:04:05.0Z", t.CreatedAt)
+			}
+
+			if errFormat3 != nil {
+				err = fmt.Errorf("error parsing transaction date: %v", t.CreatedAt)
+				return nil, err
+			}
 		}
 
 		// Transaction time must be greater than or equal to startdate and
@@ -197,11 +202,5 @@ func (b *bankService) GetTransactionDetails(ctx context.Context, accId, startDat
 			transactions = append(transactions, t)
 		}
 	}
-	return
-}
-
-func (b *bankService) DeleteAccount(ctx context.Context, accID string) (err error) {
-	fmt.Printf("Deleting account: %v\n", accID)
-	err = b.store.DeleteAccount(ctx, accID)
 	return
 }

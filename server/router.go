@@ -27,9 +27,5 @@ func initRouter(dep dependencies) (router *mux.Router) {
 	router.HandleFunc("/account/{account_id}/deposit", bank.DepositAmountHandler(dep.BankService)).Methods(http.MethodPost).Headers(versionHeader, v1)
 	router.HandleFunc("/account/{account_id}/withdraw", bank.WithdrawAmountHandler(dep.BankService)).Methods(http.MethodPost).Headers(versionHeader, v1)
 	router.HandleFunc("/account/{account_id}/transactions", bank.GetTransactionDetailsHandler(dep.BankService)).Methods(http.MethodPost).Headers(versionHeader, v1)
-	router.HandleFunc("/account/{account_id}", bank.DeleteAccountHandler(dep.BankService)).Methods(http.MethodDelete).Headers(versionHeader, v1)
-
-	sh := http.StripPrefix("/docs/", http.FileServer(http.Dir("./swaggerui/")))
-	router.PathPrefix("/docs/").Handler(sh)
 	return
 }

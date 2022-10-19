@@ -14,8 +14,8 @@ type LoginRequest struct {
 }
 
 type Claims struct {
-	Email string
-	Role  string
+	UserID string
+	Role   string
 	jwt.StandardClaims
 }
 

@@ -17,13 +17,12 @@ const (
 type Storer interface {
 	GetUserByEmailAndPassword(ctx context.Context, email string, password string) (u User, err error)
 	CreateAccount(ctx context.Context, u User, acc Account) (err error)
-	GetAccountList(ctx context.Context) (accounts []Account, err error)
-	GetAccountDetails(ctx context.Context, accID string) (acc Account, err error)
+	GetAccountList(ctx context.Context) (accounts []UserAccountDetails, err error)
+	GetAccountDetails(ctx context.Context, accID, userID string) (acc UserAccountDetails, err error)
 	AddTransaction(ctx context.Context, t Transaction) (err error)
-	DepositAmount(ctx context.Context, accID string, amount float32) (err error)
-	WithdrawAmount(ctx context.Context, accID string, amount float32) (err error)
-	GetTransactions(ctx context.Context, accID string) (transactions []Transaction, err error)
-	DeleteAccount(ctx context.Context, accID string) (err error)
+	DepositAmount(ctx context.Context, accID, userID string, amount float32) (err error)
+	WithdrawAmount(ctx context.Context, accID, userID string, amount float32) (err error)
+	GetTransactions(ctx context.Context, accID, userID string) (transactions []Transaction, err error)
 }
 
 type store struct {
