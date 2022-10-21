@@ -115,7 +115,6 @@ func (s *store) GetAccountList(ctx context.Context) (accounts []UserAccountDetai
 }
 
 func (s *store) GetAccountDetails(ctx context.Context, accID, userID string) (acc UserAccountDetails, err error) {
-	s.logger.Infof("accID:", accID, "userID:", userID)
 	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
 		return s.db.GetContext(ctx, &acc, getAccountByAccIDQuery, accID, userID)
 	})

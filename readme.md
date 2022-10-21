@@ -23,7 +23,7 @@ The Banking Application provided the following API's for the customer
 - withdraw amount from an account
 - list transactions within a given date range for an account
 
-Jwt token is used for authentication and the token is been accessed by API's using http cookie
+Jwt token is used for authentication and the token is been accessed from the http header
 
 
 # Steps
@@ -31,7 +31,7 @@ Jwt token is used for authentication and the token is been accessed by API's usi
 
 - To run migrations, execute: go run main.go create_migration
 
-- For writing unit testcases, used mockery\
+- For writing unit testcases, used mockery
     - Install mockery using commad -> docker pull vektra/mockery
     - Create mocks using commad: docker run -v "$PWD":/src -w /src vektra/mockery --dir=bank --name=Service --output=bank/mocks --with-expecter
 
