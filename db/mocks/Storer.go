@@ -5,8 +5,7 @@ package mocks
 import (
 	context "context"
 
-	db "example.com/banking/db"
-
+	db "github.com/dominiclopes/BankingApplication/db"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -232,13 +231,13 @@ func (_c *Storer_GetAccountList_Call) Return(accounts []db.UserAccountDetails, e
 	return _c
 }
 
-// GetTransactions provides a mock function with given fields: ctx, accID, userID
-func (_m *Storer) GetTransactions(ctx context.Context, accID string, userID string) ([]db.Transaction, error) {
-	ret := _m.Called(ctx, accID, userID)
+// GetTransactions provides a mock function with given fields: ctx, accID, userID, startDate, endDate
+func (_m *Storer) GetTransactions(ctx context.Context, accID string, userID string, startDate string, endDate string) ([]db.Transaction, error) {
+	ret := _m.Called(ctx, accID, userID, startDate, endDate)
 
 	var r0 []db.Transaction
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []db.Transaction); ok {
-		r0 = rf(ctx, accID, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, string) []db.Transaction); ok {
+		r0 = rf(ctx, accID, userID, startDate, endDate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]db.Transaction)
@@ -246,8 +245,8 @@ func (_m *Storer) GetTransactions(ctx context.Context, accID string, userID stri
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = rf(ctx, accID, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, string) error); ok {
+		r1 = rf(ctx, accID, userID, startDate, endDate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -264,13 +263,15 @@ type Storer_GetTransactions_Call struct {
 //  - ctx context.Context
 //  - accID string
 //  - userID string
-func (_e *Storer_Expecter) GetTransactions(ctx interface{}, accID interface{}, userID interface{}) *Storer_GetTransactions_Call {
-	return &Storer_GetTransactions_Call{Call: _e.mock.On("GetTransactions", ctx, accID, userID)}
+//  - startDate string
+//  - endDate string
+func (_e *Storer_Expecter) GetTransactions(ctx interface{}, accID interface{}, userID interface{}, startDate interface{}, endDate interface{}) *Storer_GetTransactions_Call {
+	return &Storer_GetTransactions_Call{Call: _e.mock.On("GetTransactions", ctx, accID, userID, startDate, endDate)}
 }
 
-func (_c *Storer_GetTransactions_Call) Run(run func(ctx context.Context, accID string, userID string)) *Storer_GetTransactions_Call {
+func (_c *Storer_GetTransactions_Call) Run(run func(ctx context.Context, accID string, userID string, startDate string, endDate string)) *Storer_GetTransactions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(string), args[4].(string))
 	})
 	return _c
 }

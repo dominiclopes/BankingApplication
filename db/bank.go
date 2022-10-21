@@ -3,8 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"time"
 
 	uuidgen "github.com/pborman/uuid"
 	"github.com/pkg/errors"
@@ -21,8 +19,8 @@ const (
 	updateAccountBalanceByAccIDQuery = `UPDATE accounts SET balance=$1 WHERE id=$2`
 	deleteAccountByIDQuery           = `DELETE FROM accounts WHERE id=$1`
 
-	createTransactionQuery      = `INSERT INTO transactions(id, type, amount, balance, created_at, account_id) VALUES ($1, $2, $3, $4, $5, $6)`
-	getTransactionsByAccIDQuery = `SELECT * FROM transactions WHERE account_id=$1`
+	createTransactionQuery      = `INSERT INTO transactions(id, type, amount, balance, account_id) VALUES ($1, $2, $3, $4, $5)`
+	getTransactionsByAccIDQuery = `SELECT * FROM transactions WHERE account_id=$1 and created_at BETWEEN $2 and $3`
 )
 
 type User struct {
@@ -63,6 +61,7 @@ func (s *store) GetUserByEmailAndPassword(ctx context.Context, email string, pas
 	if err == sql.ErrNoRows {
 		return u, ErrUserNotExist
 	}
+
 	return
 }
 
@@ -116,7 +115,7 @@ func (s *store) GetAccountList(ctx context.Context) (accounts []UserAccountDetai
 }
 
 func (s *store) GetAccountDetails(ctx context.Context, accID, userID string) (acc UserAccountDetails, err error) {
-	fmt.Println("accID:", accID, "userID:", userID)
+	s.logger.Infof("accID:", accID, "userID:", userID)
 	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
 		return s.db.GetContext(ctx, &acc, getAccountByAccIDQuery, accID, userID)
 	})
@@ -130,7 +129,7 @@ func (s *store) GetAccountDetails(ctx context.Context, accID, userID string) (ac
 
 func (s *store) AddTransaction(ctx context.Context, t Transaction) (err error) {
 	err = WithDefaultTimeout(ctx, func(ctx context.Context) error {
-		_, err = s.db.Exec(createTransactionQuery, t.ID, t.Type, t.Amount, t.Balance, t.CreatedAt, t.AccountID)
+		_, err = s.db.Exec(createTransactionQuery, t.ID, t.Type, t.Amount, t.Balance, t.AccountID)
 		return err
 	})
 
@@ -176,14 +175,13 @@ func (s *store) DepositAmount(ctx context.Context, accID, userID string, amount 
 			Type:      "Credit",
 			Amount:    amount,
 			Balance:   balance,
-			CreatedAt: time.Now().Format("2006-01-02 15:04:05.000"),
 			AccountID: accID,
 		}
 		if err = s.AddTransaction(ctx, t); err != nil {
 			return err
 		}
 
-		fmt.Printf("Credited amount: %v, in account: %v. Balance: %v\n", amount, accID, balance)
+		s.logger.Infof("Credited amount: %v, in account: %v. Balance: %v\n", amount, accID, balance)
 		return err
 	})
 	return
@@ -216,7 +214,7 @@ func (s *store) WithdrawAmount(ctx context.Context, accID, userID string, amount
 
 		// verify if amount can be debited
 		if acc.Balance < amount {
-			fmt.Printf("amount %v cannot be debited from account %v. insufficient funds: %v",
+			s.logger.Errorf("amount %v cannot be debited from account %v. insufficient funds: %v\n",
 				amount, accID, acc.Balance)
 			return ErrInsufficientFunds
 		}
@@ -235,26 +233,25 @@ func (s *store) WithdrawAmount(ctx context.Context, accID, userID string, amount
 			Type:      "Debit",
 			Amount:    amount,
 			Balance:   balance,
-			CreatedAt: time.Now().Format("2006-01-02 15:04:05.000"),
 			AccountID: accID,
 		}
 		if err = s.AddTransaction(ctx, t); err != nil {
 			return err
 		}
 
-		fmt.Printf("Debited amount: %v, from account: %v. Balance: %v\n", amount, accID, balance)
+		s.logger.Infof("Debited amount: %v, from account: %v. Balance: %v\n", amount, accID, balance)
 		return err
 	})
 	return
 }
 
-func (s *store) GetTransactions(ctx context.Context, accID, userID string) (transactions []Transaction, err error) {
+func (s *store) GetTransactions(ctx context.Context, accID, userID, startDate, endDate string) (transactions []Transaction, err error) {
 
 	if _, err = s.GetAccountDetails(ctx, accID, userID); err != nil {
 		return
 	}
 
-	err = s.db.SelectContext(ctx, &transactions, getTransactionsByAccIDQuery, accID)
+	err = s.db.SelectContext(ctx, &transactions, getTransactionsByAccIDQuery, accID, startDate, endDate)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return transactions, ErrTransactionNotExist
@@ -262,6 +259,6 @@ func (s *store) GetTransactions(ctx context.Context, accID, userID string) (tran
 		return
 	}
 
-	fmt.Println("Transactions details:", transactions)
+	s.logger.Info("Transactions details:", transactions)
 	return
 }

@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 
-	"example.com/banking/app"
-	"example.com/banking/db"
-	"example.com/banking/db/mocks"
+	"github.com/dominiclopes/BankingApplication/app"
+	"github.com/dominiclopes/BankingApplication/db"
+	"github.com/dominiclopes/BankingApplication/db/mocks"
 )
 
 func init() {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/urfave/negroni"
 
-	"example.com/banking/config"
+	"github.com/dominiclopes/BankingApplication/config"
 )
 
 func StartApiServer() {

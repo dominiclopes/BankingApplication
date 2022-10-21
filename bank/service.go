@@ -3,20 +3,16 @@ package bank
 import (
 	"context"
 	"errors"
-	"fmt"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	uuidgen "github.com/pborman/uuid"
 	"go.uber.org/zap"
 
-	"example.com/banking/db"
+	"github.com/dominiclopes/BankingApplication/db"
+	"github.com/dominiclopes/BankingApplication/utils"
 )
 
-var secretKey = []byte("I'mGoingToBeAGolangDeveloper")
-
 type Service interface {
-	Login(ctx context.Context, lReq LoginRequest) (tokenString string, tokenExpirationTime time.Time, err error)
+	Login(ctx context.Context, lReq LoginRequest) (loginRes LoginResponse, err error)
 	CreateAccount(ctx context.Context, accReq CreateAccountRequest) (accRes CreateAccountResponse, err error)
 	GetAccountList(ctx context.Context) (accounts []db.UserAccountDetails, err error)
 	GetAccountDetails(ctx context.Context, accId, userID string) (acc db.UserAccountDetails, err error)
@@ -37,38 +33,7 @@ func NewBankService(s db.Storer, l *zap.SugaredLogger) Service {
 	}
 }
 
-func generateJWT(userID string, role string) (tokenString string, tokenExpirationTime time.Time, err error) {
-	tokenExpirationTime = time.Now().Add(5 * time.Minute)
-	claims := &Claims{
-		UserID: userID,
-		Role:   role,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: tokenExpirationTime.Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err = token.SignedString(secretKey)
-	if err != nil {
-		err = fmt.Errorf("error generating token, err: %v", err)
-		return
-	}
-	return
-}
-
-func ValidateJWT(tokenString string) (claims *Claims, err error) {
-	claims = &Claims{}
-
-	_, err = jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return secretKey, nil
-	})
-	if err != nil {
-		err = fmt.Errorf("unauthorized, err: %v", err)
-		return
-	}
-	return
-}
-
-func (b *bankService) Login(ctx context.Context, u LoginRequest) (tokenString string, tokenExpirationTime time.Time, err error) {
+func (b *bankService) Login(ctx context.Context, u LoginRequest) (loginRes LoginResponse, err error) {
 	// Verify if user is present
 	user, err := b.store.GetUserByEmailAndPassword(ctx, u.Email, u.Password)
 	if err != nil {
@@ -80,10 +45,15 @@ func (b *bankService) Login(ctx context.Context, u LoginRequest) (tokenString st
 	}
 
 	// Create the JWT token
-	tokenString, tokenExpirationTime, err = generateJWT(user.ID, user.Type)
+	tokenString, err := utils.Encode(user.ID, user.Type)
 	if err != nil {
 		return
 	}
+
+	loginRes = LoginResponse{
+		Token: tokenString,
+	}
+
 	return
 }
 
@@ -139,7 +109,7 @@ func (b *bankService) GetAccountDetails(ctx context.Context, accId, userID strin
 }
 
 func (b *bankService) DepositAmount(ctx context.Context, accId, userID string, amount float32) (err error) {
-	fmt.Printf("Depositing amount: %v in account: %v\n", amount, accId)
+	b.logger.Infof("Depositing amount: %v in account: %v\n", amount, accId)
 
 	err = b.store.DepositAmount(ctx, accId, userID, amount)
 	if err != nil {
@@ -150,7 +120,7 @@ func (b *bankService) DepositAmount(ctx context.Context, accId, userID string, a
 }
 
 func (b *bankService) WithdrawAmount(ctx context.Context, accId, userID string, amount float32) (err error) {
-	fmt.Printf("Withdrawing amount: %v from account: %v\n", amount, accId)
+	b.logger.Infof("Withdrawing amount: %v from account: %v\n", amount, accId)
 
 	err = b.store.WithdrawAmount(ctx, accId, userID, amount)
 	if err != nil {
@@ -160,47 +130,11 @@ func (b *bankService) WithdrawAmount(ctx context.Context, accId, userID string, 
 }
 
 func (b *bankService) GetTransactionDetails(ctx context.Context, accId, userID, startDate, endDate string) (transactions []db.Transaction, err error) {
-	fmt.Printf("Getting transactions details for account: %v, from %v to %v\n", accId, startDate, endDate)
-	allTransactions, err := b.store.GetTransactions(ctx, accId, userID)
+	b.logger.Infof("Getting transactions details for account: %v, from %v to %v\n", accId, startDate, endDate)
+
+	transactions, err = b.store.GetTransactions(ctx, accId, userID, startDate, endDate)
 	if err != nil {
 		return
-	}
-
-	startDateTime, err := time.Parse("2006-01-02", startDate)
-	if err != nil {
-		err = fmt.Errorf("error parsing startdate: %v", startDate)
-		return
-	}
-	endDateTime, err := time.Parse("2006-01-02", endDate)
-	if err != nil {
-		err = fmt.Errorf("error parsing endate %v", endDate)
-		return
-	}
-
-	transactions = make([]db.Transaction, 0)
-	var tDateTimeAsNeeded time.Time
-	var errFormat1, errFormat2, errFormat3 error
-	for _, t := range allTransactions {
-		tDateTimeAsNeeded, errFormat1 = time.Parse("2006-01-02T15:04:05.000Z", t.CreatedAt)
-		if errFormat1 != nil {
-			tDateTimeAsNeeded, errFormat2 = time.Parse("2006-01-02T15:04:05.00Z", t.CreatedAt)
-
-			if errFormat2 != nil {
-				tDateTimeAsNeeded, errFormat3 = time.Parse("2006-01-02T15:04:05.0Z", t.CreatedAt)
-			}
-
-			if errFormat3 != nil {
-				err = fmt.Errorf("error parsing transaction date: %v", t.CreatedAt)
-				return nil, err
-			}
-		}
-
-		// Transaction time must be greater than or equal to startdate and
-		// less than or equal to end date
-		if (tDateTimeAsNeeded == startDateTime || tDateTimeAsNeeded.After(startDateTime)) &&
-			(tDateTimeAsNeeded == endDateTime || tDateTimeAsNeeded.Before(endDateTime)) {
-			transactions = append(transactions, t)
-		}
 	}
 	return
 }

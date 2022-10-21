@@ -1,9 +1,9 @@
 package server
 
 import (
-	"example.com/banking/app"
-	"example.com/banking/bank"
-	"example.com/banking/db"
+	"github.com/dominiclopes/BankingApplication/app"
+	"github.com/dominiclopes/BankingApplication/bank"
+	"github.com/dominiclopes/BankingApplication/db"
 )
 
 type dependencies struct {
@@ -14,7 +14,7 @@ func initDependencies() (dependencies, error) {
 	logger := app.GetLogger()
 
 	appDB := app.GetDB()
-	dbStore := db.NewStorer(appDB)
+	dbStore := db.NewStorer(appDB, logger)
 
 	bankService := bank.NewBankService(dbStore, logger)
 

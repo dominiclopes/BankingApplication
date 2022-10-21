@@ -14,7 +14,7 @@ import (
 	"github.com/mattes/migrate/database/postgres"
 	_ "github.com/mattes/migrate/source/file"
 
-	"example.com/banking/config"
+	"github.com/dominiclopes/BankingApplication/config"
 )
 
 var ErrFindingDriver = errors.New("no migrate driver instance found")

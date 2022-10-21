@@ -6,8 +6,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"example.com/banking/bank"
-	"example.com/banking/config"
+	"github.com/dominiclopes/BankingApplication/bank"
+	"github.com/dominiclopes/BankingApplication/config"
 )
 
 const (

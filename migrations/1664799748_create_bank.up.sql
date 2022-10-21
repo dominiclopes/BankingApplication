@@ -17,7 +17,7 @@ CREATE TABLE transactions(
     type        VARCHAR(6) NOT NULL,
     amount      DECIMAL NOT NULL,
     balance     DECIMAL NOT NULL,
-    created_at  TIMESTAMP NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     account_id  UUID REFERENCES accounts (id)
 );
 

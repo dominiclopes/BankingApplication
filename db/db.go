@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
 )
 
 type ctxKey int
@@ -22,16 +23,18 @@ type Storer interface {
 	AddTransaction(ctx context.Context, t Transaction) (err error)
 	DepositAmount(ctx context.Context, accID, userID string, amount float32) (err error)
 	WithdrawAmount(ctx context.Context, accID, userID string, amount float32) (err error)
-	GetTransactions(ctx context.Context, accID, userID string) (transactions []Transaction, err error)
+	GetTransactions(ctx context.Context, accID, userID, startDate, endDate string) (transactions []Transaction, err error)
 }
 
 type store struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	logger *zap.SugaredLogger
 }
 
-func NewStorer(d *sqlx.DB) Storer {
+func NewStorer(d *sqlx.DB, l *zap.SugaredLogger) Storer {
 	return &store{
-		db: d,
+		db:     d,
+		logger: l,
 	}
 }
 

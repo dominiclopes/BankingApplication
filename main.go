@@ -5,10 +5,10 @@ import (
 
 	"github.com/urfave/cli"
 
-	"example.com/banking/app"
-	"example.com/banking/config"
-	"example.com/banking/db"
-	"example.com/banking/server"
+	"github.com/dominiclopes/BankingApplication/app"
+	"github.com/dominiclopes/BankingApplication/config"
+	"github.com/dominiclopes/BankingApplication/db"
+	"github.com/dominiclopes/BankingApplication/server"
 )
 
 func main() {
